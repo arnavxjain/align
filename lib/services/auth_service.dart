@@ -53,6 +53,31 @@ class AuthService {
     );
   }
 
+  static Future<bool> hasProfile(String userId) async {
+    final data = await _supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+    return data != null;
+  }
+
+  static Future<void> saveProfile({
+    required String userId,
+    required String email,
+    required String firstName,
+    required List<String> useCases,
+    required int age,
+  }) async {
+    await _supabase.from('user_profiles').upsert({
+      'id': userId,
+      'email': email,
+      'first_name': firstName,
+      'use_cases': useCases,
+      'age': age,
+    });
+  }
+
   static Future<void> signOut() async {
     await _supabase.auth.signOut();
   }

@@ -4,14 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ── Light palette ──────────────────────────────────────────────────────────
-  static const _lPrimary    = Color(0xFF007AFF);
   static const _lLabel      = Color(0xFF1C1C1E);
   static const _lSecondary  = Color(0xFF8E8E93);
   static const _lSurface    = Colors.white;
   static const _lSeparator  = Color(0xFFD1D1D6);
 
   // ── Dark palette ───────────────────────────────────────────────────────────
-  static const _dPrimary    = Color(0xFF0A84FF);
   static const _dLabel      = Color(0xFFFFFFFF);
   static const _dSecondary  = Color(0xFF8E8E93);
   static const _dSurface    = Color(0xFF1C1C1E);
@@ -34,12 +32,12 @@ class AppTheme {
         labelSmall:     GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w400, color: secondary),
       );
 
-  static ThemeData get light {
+  static ThemeData light([Color primary = const Color(0xFF007AFF)]) {
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: const Color(0xFFF2F2F7),
       colorScheme: base.colorScheme.copyWith(
-        primary: _lPrimary,
+        primary: primary,
         onPrimary: Colors.white,
         surface: _lSurface,
         onSurface: _lLabel,
@@ -73,12 +71,12 @@ class AppTheme {
     );
   }
 
-  static ThemeData get dark {
+  static ThemeData dark([Color primary = const Color(0xFF0A84FF)]) {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFF0A0A0F),
+      scaffoldBackgroundColor: const Color(0xFF1C1C1E),
       colorScheme: base.colorScheme.copyWith(
-        primary: _dPrimary,
+        primary: primary,
         onPrimary: Colors.white,
         surface: _dSurface,
         onSurface: _dLabel,

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
+import 'providers/theme_notifier.dart';
 import 'screens/home.dart';
 import 'screens/login.dart';
+import 'screens/onboarding.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -13,6 +16,9 @@ void main() async {
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
   );
+
+  await loadSavedTheme();
+  await loadSavedAccent();
 
   runApp(const MyApp());
 }
@@ -29,50 +35,97 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    themeNotifier.addListener(_onThemeChanged);
+    accentNotifier.addListener(_onThemeChanged);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    themeNotifier.removeListener(_onThemeChanged);
+    accentNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
+
+  void _onThemeChanged() => setState(() {});
 
   @override
   void didChangePlatformBrightness() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
-    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final systemBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+    // User override takes priority; fall back to system brightness
+    final themeMode = themeNotifier.value == ThemeMode.system
+        ? (systemBrightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light)
+        : themeNotifier.value;
+
+    final accent = currentAccent;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+      theme: AppTheme.light(accent.light),
+      darkTheme: AppTheme.dark(accent.dark),
+      themeMode: themeMode,
       home: const AuthGate(),
     );
   }
 }
 
-// Listens to Supabase auth state and routes to the right screen.
-// The session is persisted on device, so returning users skip the login screen.
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  String? _checkedUserId;
+  bool? _hasProfile;
+
+  void _fetchProfile(String userId) {
+    if (_checkedUserId == userId) return;
+    _checkedUserId = userId;
+    _hasProfile = null;
+    AuthService.hasProfile(userId).then((result) {
+      if (mounted) setState(() => _hasProfile = result);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          final session = Supabase.instance.client.auth.currentSession;
-          if (session != null) return const Home();
+        final session = snapshot.data?.session
+            ?? Supabase.instance.client.auth.currentSession;
+
+        if (!snapshot.hasData && session == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final session = snapshot.data!.session;
-        return session != null ? const Home() : const LoginScreen();
+        if (session == null) {
+          _checkedUserId = null;
+          _hasProfile = null;
+          return const LoginScreen();
+        }
+
+        _fetchProfile(session.user.id);
+
+        if (_hasProfile == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (_hasProfile!) return const Home();
+
+        return OnboardingScreen(
+          onComplete: () => setState(() => _hasProfile = true),
+        );
       },
     );
   }

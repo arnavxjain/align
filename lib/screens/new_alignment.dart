@@ -1,0 +1,648 @@
+import 'package:figma_squircle/figma_squircle.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+
+import '../screens/alignment_detail.dart';
+import '../services/analysis_service.dart';
+import '../widgets/tappable.dart';
+
+class NewAlignmentScreen extends StatefulWidget {
+  const NewAlignmentScreen({super.key});
+
+  @override
+  State<NewAlignmentScreen> createState() => _NewAlignmentScreenState();
+}
+
+class _NewAlignmentScreenState extends State<NewAlignmentScreen> {
+  String? _url;
+  bool _realismCheck = true;
+  bool _identifyProducts = false;
+  bool _createTimeline = false;
+  bool _findSimilarContent = false;
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (text != null && text.isNotEmpty) {
+      setState(() => _url = text);
+      // ignore: avoid_print
+      print('Pasted URL: $text');
+    }
+  }
+
+  void _clear() => setState(() => _url = null);
+
+  void _startAnalysis() {
+    if (_url == null) return;
+    final entry = AnalysisService.createPendingEntry(
+      url: _url!,
+      detectedType: _detectType(_url!),
+      realismCheck: _realismCheck,
+      identifyProducts: _identifyProducts,
+      createTimeline: _createTimeline,
+      findSimilar: _findSimilarContent,
+    );
+    Navigator.pushReplacement(
+      context,
+      CupertinoPageRoute(
+        builder: (_) => AlignmentDetailScreen(alignmentId: entry['id'] as String),
+      ),
+    );
+  }
+
+  static String _detectType(String url) {
+    final u = url.toLowerCase();
+    if (u.contains('youtube.com') || u.contains('youtu.be')) return 'Video';
+    if (u.contains('instagram.com/reel')) return 'Reel';
+    if (u.contains('instagram.com')) return 'Post';
+    if (u.contains('tiktok.com')) return 'Short';
+    if (u.contains('twitter.com') || u.contains('x.com')) return 'Post';
+    if (u.contains('reddit.com')) return 'Thread';
+    return 'Article';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: _Header()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                      child: _UrlDropZone(
+                        url: _url,
+                        onTap: _paste,
+                        onClear: _clear,
+                        isDark: isDark,
+                        scheme: scheme,
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      child: _url == null
+                          ? const SizedBox.shrink()
+                          : _OptionsSection(
+                              linkType: _detectType(_url!),
+                              realismCheck: _realismCheck,
+                              onRealismChanged: (v) => setState(() => _realismCheck = v),
+                              identifyProducts: _identifyProducts,
+                              onIdentifyChanged: (v) => setState(() => _identifyProducts = v),
+                              createTimeline: _createTimeline,
+                              onTimelineChanged: (v) => setState(() => _createTimeline = v),
+                              findSimilarContent: _findSimilarContent,
+                              onFindSimilarChanged: (v) => setState(() => _findSimilarContent = v),
+                              scheme: scheme,
+                              isDark: isDark,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              child: _url == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      child: _SwipeToGoButton(
+                        onComplete: _startAnalysis,
+                        scheme: scheme,
+                        isDark: isDark,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        children: [
+          Tappable(
+            onTap: () => Navigator.maybePop(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark
+                    ? const Color(0xFF2C2C2E)
+                    : const Color(0xFFE5E5EA),
+              ),
+              child: Icon(CupertinoIcons.chevron_left,
+                  color: scheme.onSurface, size: 16),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'New Alignment',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+          const SizedBox(width: 36),
+        ],
+      ),
+    );
+  }
+}
+
+// ── URL drop zone ─────────────────────────────────────────────────────────────
+
+class _UrlDropZone extends StatelessWidget {
+  final String? url;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  const _UrlDropZone({
+    required this.url,
+    required this.onTap,
+    required this.onClear,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUrl = url != null;
+    final borderColor = hasUrl
+        ? scheme.primary.withAlpha(120)
+        : isDark
+            ? const Color(0xFF48484A)
+            : const Color(0xFFC7C7CC);
+    final iconColor = hasUrl
+        ? scheme.primary
+        : isDark
+            ? const Color(0xFF636366)
+            : const Color(0xFFAEAEB2);
+
+    return Tappable(
+      onTap: onTap,
+      child: CustomPaint(
+        painter: _DashedBorderPainter(color: borderColor, radius: 18),
+        child: SizedBox(
+          width: double.infinity,
+          height: 180,
+          child: Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.link, color: iconColor, size: 28),
+                      const SizedBox(height: 12),
+                      if (hasUrl)
+                        Text(
+                          url!,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: scheme.onSurface,
+                            height: 1.5,
+                          ),
+                        )
+                      else
+                        Text(
+                          'Tap to paste a YouTube, Reel,\narticle or any web URL',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: scheme.onSurfaceVariant,
+                            height: 1.5,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              if (hasUrl)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Tappable(
+                    onTap: onClear,
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark
+                            ? const Color(0xFF48484A)
+                            : const Color(0xFFD1D1D6),
+                      ),
+                      child: Icon(Icons.close_rounded,
+                          size: 13, color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Options section (appears after paste) ────────────────────────────────────
+
+class _OptionsSection extends StatelessWidget {
+  final String linkType;
+  final bool realismCheck;
+  final ValueChanged<bool> onRealismChanged;
+  final bool identifyProducts;
+  final ValueChanged<bool> onIdentifyChanged;
+  final bool createTimeline;
+  final ValueChanged<bool> onTimelineChanged;
+  final bool findSimilarContent;
+  final ValueChanged<bool> onFindSimilarChanged;
+  final ColorScheme scheme;
+  final bool isDark;
+
+  const _OptionsSection({
+    required this.linkType,
+    required this.realismCheck,
+    required this.onRealismChanged,
+    required this.identifyProducts,
+    required this.onIdentifyChanged,
+    required this.createTimeline,
+    required this.onTimelineChanged,
+    required this.findSimilarContent,
+    required this.onFindSimilarChanged,
+    required this.scheme,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Link type badge
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: ShapeDecoration(
+                color: scheme.primary.withAlpha(isDark ? 40 : 25),
+                shape: SmoothRectangleBorder(
+                  borderRadius: SmoothBorderRadius(cornerRadius: 10, cornerSmoothing: 0.6),
+                  side: BorderSide(
+                    color: scheme.primary.withAlpha(isDark ? 80 : 60),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Text(
+                linkType,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.primary,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          _ToggleRow(
+            label: 'Realism Check',
+            subtitle: 'Flag misleading or biased claims',
+            value: realismCheck,
+            onChanged: onRealismChanged,
+            scheme: scheme,
+          ),
+          const SizedBox(height: 20),
+          _ToggleRow(
+            label: 'Identify Products',
+            subtitle: 'Detect and list mentioned products',
+            value: identifyProducts,
+            onChanged: onIdentifyChanged,
+            scheme: scheme,
+          ),
+          const SizedBox(height: 20),
+          _ToggleRow(
+            label: 'Create Timeline',
+            subtitle: 'Extract key events in order',
+            value: createTimeline,
+            onChanged: onTimelineChanged,
+            scheme: scheme,
+          ),
+          const SizedBox(height: 20),
+          _ToggleRow(
+            label: 'Find Similar Content',
+            subtitle: 'Discover related articles or videos',
+            value: findSimilarContent,
+            onChanged: onFindSimilarChanged,
+            scheme: scheme,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Swipe-to-go button ────────────────────────────────────────────────────────
+
+class _SwipeToGoButton extends StatefulWidget {
+  final VoidCallback onComplete;
+  final ColorScheme scheme;
+  final bool isDark;
+
+  const _SwipeToGoButton({
+    required this.onComplete,
+    required this.scheme,
+    required this.isDark,
+  });
+
+  @override
+  State<_SwipeToGoButton> createState() => _SwipeToGoButtonState();
+}
+
+class _SwipeToGoButtonState extends State<_SwipeToGoButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  double _drag = 0;
+  bool _completed = false;
+
+  static const double _height   = 64;
+  static const double _thumbW   = 68;
+  static const double _thumbH   = 54;
+  static const double _pad      = 5;
+
+  double _maxDrag(double w) => w - _thumbW - _pad * 2;
+  double _progress(double w) =>
+      w > 0 ? (_drag / _maxDrag(w)).clamp(0.0, 1.0) : 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 420));
+    _controller.addListener(() => setState(() => _drag = _animation.value));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onUpdate(DragUpdateDetails d, double w) {
+    if (_completed) return;
+    _controller.stop();
+    setState(() => _drag = (_drag + d.delta.dx).clamp(0, _maxDrag(w)));
+  }
+
+  void _onEnd(DragEndDetails d, double w) {
+    if (_completed) return;
+    if (_progress(w) >= 0.85) {
+      _animation = Tween<double>(begin: _drag, end: _maxDrag(w))
+          .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+      _controller.forward(from: 0).then((_) {
+        if (mounted) {
+          setState(() => _completed = true);
+          widget.onComplete();
+        }
+      });
+    } else {
+      _animation = Tween<double>(begin: _drag, end: 0).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trackBg = widget.isDark
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFF1C1C1E);
+
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.78,
+        child: LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      final progress = _progress(w);
+
+      return GestureDetector(
+        onHorizontalDragUpdate: (d) => _onUpdate(d, w),
+        onHorizontalDragEnd:   (d) => _onEnd(d, w),
+        child: Container(
+          height: _height,
+          decoration: ShapeDecoration(
+            color: trackBg,
+            shape: SmoothRectangleBorder(
+              borderRadius: SmoothBorderRadius(
+                  cornerRadius: _height / 2, cornerSmoothing: 0.6),
+            ),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Opacity(
+                  opacity: (1.0 - progress * 2).clamp(0.0, 1.0),
+                  child: Text(
+                    'Swipe to Go',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withAlpha(160),
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+              // Draggable thumb
+              Positioned(
+                left: _pad + _drag,
+                top: (_height - _thumbH) / 2,
+                child: Container(
+                  width: _thumbW,
+                  height: _thumbH,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_thumbH / 2),
+                    color: Colors.black,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x30000000),
+                        blurRadius: 10,
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      PhosphorIcons.caretDoubleRightFill,
+                      size: 22,
+                      color: widget.scheme.primary,
+                    )
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }),
+      ),
+    );
+  }
+}
+
+// ── Reusable toggle row ───────────────────────────────────────────────────────
+
+class _ToggleRow extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final ColorScheme scheme;
+
+  const _ToggleRow({
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tappable(
+      onTap: () => onChanged(!value),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: value ? scheme.primary : Colors.transparent,
+              border: Border.all(
+                color: value
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant.withAlpha(80),
+                width: 2,
+              ),
+            ),
+            child: value
+                ? Icon(CupertinoIcons.checkmark, size: 14, color: scheme.onPrimary)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  static const _strokeWidth = 1.5;
+  static const _dashLength  = 7.0;
+  static const _gapLength   = 5.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = _strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Rect.fromLTWH(_strokeWidth / 2, _strokeWidth / 2,
+        size.width - _strokeWidth, size.height - _strokeWidth);
+    final path = SmoothRectangleBorder(
+      borderRadius: SmoothBorderRadius(cornerRadius: radius, cornerSmoothing: 0.6),
+    ).getOuterPath(rect);
+
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      bool drawing = true;
+      while (distance < metric.length) {
+        final len = drawing ? _dashLength : _gapLength;
+        if (drawing) {
+          canvas.drawPath(metric.extractPath(distance, distance + len), paint);
+        }
+        distance += len;
+        drawing = !drawing;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) => old.color != color;
+}

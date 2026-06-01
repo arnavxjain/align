@@ -84,7 +84,7 @@ class _LiquidPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(
       Offset.zero & size,
-      Paint()..color = const Color(0xFF0A0A0F),
+      Paint()..color = const Color(0xFF1C1C1E),
     );
 
     _blob(canvas, size,

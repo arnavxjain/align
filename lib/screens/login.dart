@@ -4,7 +4,10 @@ import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_svg/flutter_svg.dart';
+
 import '../services/auth_service.dart';
+import '../widgets/tappable.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -129,16 +132,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
 
                 Center(
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: ShapeDecoration(
-                      color: scheme.onSurface,
-                      shape: SmoothRectangleBorder(
-                        borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
-                      ),
-                    ),
-                    child: Icon(Icons.layers_rounded, color: scheme.surface, size: 36),
+                  child: SvgPicture.asset(
+                    'lib/assets/logo.svg',
+                    width: 64,
+                    height: 64,
+                    colorFilter: ColorFilter.mode(scheme.onSurface, BlendMode.srcIn),
                   ),
                 ),
 
@@ -243,8 +241,7 @@ class _EmailStep extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Center(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
+          child: Tappable(
             onTap: isLoading ? null : onToggleMode,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -319,12 +316,12 @@ class _OtpStep extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
+            Tappable(
               onTap: onResend,
               child: Text('Resend code', style: TextStyle(color: scheme.primary, fontSize: 15)),
             ),
             Text('  ·  ', style: TextStyle(color: scheme.onSurfaceVariant)),
-            GestureDetector(
+            Tappable(
               onTap: onBack,
               child: Text('Change email', style: TextStyle(color: scheme.primary, fontSize: 15)),
             ),
@@ -499,7 +496,7 @@ class _PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return GestureDetector(
+    return Tappable(
       onTap: onTap,
       child: AnimatedOpacity(
         opacity: onTap == null ? 0.45 : 1.0,
@@ -565,7 +562,7 @@ class _SocialButton extends StatelessWidget {
       fg = scheme.onSurface;
     }
 
-    return GestureDetector(
+    return Tappable(
       onTap: onTap,
       child: AnimatedOpacity(
         opacity: onTap == null ? 0.45 : 1.0,
