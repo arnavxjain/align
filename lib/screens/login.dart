@@ -118,10 +118,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final lightTheme = Theme.of(context).copyWith(brightness: Brightness.light);
+    final scheme = lightTheme.colorScheme;
     final canUseApple = Platform.isIOS || Platform.isMacOS;
 
-    return Scaffold(
+    return Theme(
+      data: lightTheme,
+      child: Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -199,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

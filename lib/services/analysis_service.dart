@@ -293,6 +293,45 @@ class AnalysisService {
     } catch (_) {}
   }
 
+  // ── Chat history ──────────────────────────────────────────────────────────────
+
+  static Future<void> saveChatHistory(
+    String alignmentId,
+    List<Map<String, dynamic>> messages,
+  ) async {
+    // Optimistic notifier update.
+    final list = List<Map<String, dynamic>>.from(alignmentsNotifier.value);
+    final idx = list.indexWhere((e) => e['id'] == alignmentId);
+    if (idx >= 0) {
+      final updated = Map<String, dynamic>.from(list[idx]);
+      updated['chat_history'] = messages;
+      list[idx] = updated;
+      alignmentsNotifier.value = list;
+    }
+
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+    try {
+      final data = await client
+          .from('user_profiles')
+          .select('saved_analyses')
+          .eq('id', userId)
+          .single();
+      final current = ((data['saved_analyses'] as List?) ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      final si = current.indexWhere((e) => e['id'] == alignmentId);
+      if (si >= 0) {
+        current[si]['chat_history'] = messages;
+        await client
+            .from('user_profiles')
+            .update({'saved_analyses': current})
+            .eq('id', userId);
+      }
+    } catch (_) {}
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────────
 
   static void _update(String id, Map<String, dynamic> entry) {

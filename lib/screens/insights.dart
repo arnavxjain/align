@@ -60,9 +60,9 @@ class _InsightsState extends State<InsightsScreen> {
                   child: Stack(
                     children: [
                       BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
                         child: Container(
-                            color: scaffoldBg.withAlpha(isDark ? 155 : 195)),
+                            color: scaffoldBg.withAlpha(isDark ? 110 : 150)),
                       ),
                       Positioned(
                         left: 0,
@@ -339,7 +339,9 @@ class _Content extends StatelessWidget {
   // ── Summary cards ────────────────────────────────────────────────────────────
 
   Widget _summaryRow() {
-    return Row(
+    return IntrinsicHeight(
+      child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _statCard('Alignments', '${data.total}', scheme.primary),
         const SizedBox(width: 10),
@@ -349,6 +351,7 @@ class _Content extends StatelessWidget {
         _statCard(
             'Flags Raised', '${data.totalFlags}', const Color(0xFFFF3B30)),
       ],
+    ),
     );
   }
 

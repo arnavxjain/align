@@ -204,6 +204,74 @@ class GeminiService {
     return 60; // safe fallback
   }
 
+  static Future<String?> chat({
+    required String systemContext,
+    required List<Map<String, dynamic>> history,
+  }) async {
+    final contents = <Map<String, dynamic>>[];
+    for (int i = 0; i < history.length; i++) {
+      final msg = history[i];
+      final geminiRole = msg['role'] == 'user' ? 'user' : 'model';
+      var text = msg['content'] as String;
+      if (i == 0 && msg['role'] == 'user') {
+        text = '$systemContext\n\n---\n\n$text';
+      }
+      contents.add({
+        'role': geminiRole,
+        'parts': [
+          {'text': text}
+        ],
+      });
+    }
+
+    final body = <String, dynamic>{
+      'contents': contents,
+      'generationConfig': {
+        'thinkingConfig': {'thinkingBudget': 0},
+      },
+    };
+
+    try {
+      var response = await http
+          .post(
+            Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 429) {
+        final delay = _parseRetryDelay(response.body);
+        debugPrint('Gemini chat 429 — retrying in ${delay}s');
+        await Future.delayed(Duration(seconds: delay + 1));
+        response = await http
+            .post(
+              Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 60));
+      }
+
+      if (response.statusCode != 200) {
+        debugPrint('Gemini chat ${response.statusCode}: ${response.body}');
+        return null;
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final parts =
+          (json['candidates']?[0]?['content']?['parts'] as List?) ?? [];
+      return parts
+          .whereType<Map>()
+          .where((p) => p['thought'] != true && p['text'] != null)
+          .map((p) => p['text'] as String)
+          .firstOrNull;
+    } catch (e) {
+      debugPrint('Gemini chat error: $e');
+      return null;
+    }
+  }
+
   static List<Map<String, dynamic>>? _parseJsonArray(String text) {
     try {
       var s = text.trim();

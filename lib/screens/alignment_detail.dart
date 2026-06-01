@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:figma_squircle/figma_squircle.dart';
@@ -7,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../providers/theme_notifier.dart';
 import '../services/analysis_service.dart';
+import '../services/gemini_service.dart';
 import '../services/reel_service.dart';
 import '../widgets/tappable.dart';
 
@@ -141,8 +143,11 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
 
         return Scaffold(
           body: SafeArea(
+            bottom: false,
             top: false,
-            child: CustomScrollView(
+            child: Stack(
+              children: [
+                CustomScrollView(
               slivers: [
                 // ── Pinned blurred header ────────────────────────────────────
                 SliverAppBar(
@@ -157,9 +162,9 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                     child: Stack(
                       children: [
                         BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                          filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
                           child: Container(
-                            color: scaffoldBg.withAlpha(isDark ? 155 : 195),
+                            color: scaffoldBg.withAlpha(isDark ? 110 : 150),
                           ),
                         ),
                         Positioned(
@@ -206,7 +211,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                   actions: [
                     ValueListenableBuilder<Set<String>>(
                       valueListenable: starredNotifier,
-                      builder: (_, starred, __) {
+                      builder: (_, starred, _a) {
                         final isStarred =
                             starred.contains(widget.alignmentId);
                         return Padding(
@@ -344,7 +349,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                                       duration:
                                           const Duration(milliseconds: 500),
                                       curve: Curves.easeOutCubic,
-                                      builder: (_, value, __) =>
+                                      builder: (_, value, _b) =>
                                           LinearProgressIndicator(
                                         value: value,
                                         minHeight: 4,
@@ -427,7 +432,19 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                         .toList(),
                   ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 48 + 16 + 16 + MediaQuery.of(context).padding.bottom,
+                  ),
+                ),
+              ],
+            ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                  child: _ChatBar(alignmentId: widget.alignmentId),
+                ),
               ],
             ),
           ),
@@ -736,6 +753,758 @@ class _SimilarItem extends StatelessWidget {
                     color: scheme.onSurfaceVariant,
                     height: 1.45)),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Chat input bar ────────────────────────────────────────────────────────────
+
+class _ChatBar extends StatefulWidget {
+  final String alignmentId;
+  const _ChatBar({required this.alignmentId});
+
+  @override
+  State<_ChatBar> createState() => _ChatBarState();
+}
+
+class _ChatBarState extends State<_ChatBar> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _openSheet(BuildContext context, {String? initialMessage}) {
+    final alignment = alignmentsNotifier.value.firstWhere(
+      (e) => e['id'] == widget.alignmentId,
+      orElse: () => <String, dynamic>{},
+    );
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 340),
+      pageBuilder: (ctx, _, __) => Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.75,
+              child: _ChatSheet(
+                alignmentId: widget.alignmentId,
+                alignment: alignment,
+                initialMessage: initialMessage,
+              ),
+            ),
+          ),
+        ),
+      ),
+      transitionBuilder: (ctx, anim, _, child) {
+        final curved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInQuart,
+        );
+        return Stack(
+          children: [
+            // Full-screen blurred + tinted scrim
+            AnimatedBuilder(
+              animation: curved,
+              builder: (_, __) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(ctx).pop(),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: curved.value * 22,
+                    sigmaY: curved.value * 22,
+                  ),
+                  child: Container(
+                    color: Colors.black
+                        .withAlpha((curved.value * 110).round()),
+                  ),
+                ),
+              ),
+            ),
+            // Sheet slides up
+            SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _submit(BuildContext context) {
+    final text = _ctrl.text.trim();
+    _ctrl.clear();
+    _openSheet(context, initialMessage: text.isNotEmpty ? text : null);
+  }
+
+  BoxDecoration _pillDecoration(bool isDark) => BoxDecoration(
+        color: isDark ? Colors.white.withAlpha(22) : Colors.black.withAlpha(12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withAlpha(45) : Colors.black.withAlpha(30),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 70 : 30),
+            blurRadius: 24,
+            spreadRadius: 0,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    final alignment = alignmentsNotifier.value.firstWhere(
+      (e) => e['id'] == widget.alignmentId,
+      orElse: () => <String, dynamic>{},
+    );
+    final hasChatHistory =
+        (alignment['chat_history'] as List?)?.isNotEmpty ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.only(left: 16, right: 6),
+                  decoration: _pillDecoration(isDark),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _ctrl,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _submit(context),
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: scheme.onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Ask anything about this alignment…',
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _ctrl,
+                        builder: (ctx, val, _) {
+                          final hasText = val.text.trim().isNotEmpty;
+                          return Tappable(
+                            onTap: hasText ? () => _submit(context) : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: hasText
+                                    ? scheme.primary
+                                    : (isDark
+                                        ? Colors.white.withAlpha(18)
+                                        : Colors.black.withAlpha(12)),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.arrow_up,
+                                size: 15,
+                                color: hasText
+                                    ? scheme.onPrimary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (hasChatHistory) ...[
+            const SizedBox(width: 8),
+            Tappable(
+              onTap: () => _openSheet(context),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: _pillDecoration(isDark),
+                    child: Icon(
+                      CupertinoIcons.bubble_left_fill,
+                      size: 17,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Chat sheet ────────────────────────────────────────────────────────────────
+
+class _ChatSheet extends StatefulWidget {
+  final String alignmentId;
+  final Map<String, dynamic> alignment;
+  final String? initialMessage;
+
+  const _ChatSheet({
+    required this.alignmentId,
+    required this.alignment,
+    this.initialMessage,
+  });
+
+  @override
+  State<_ChatSheet> createState() => _ChatSheetState();
+}
+
+class _ChatSheetState extends State<_ChatSheet> {
+  final _ctrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  List<Map<String, dynamic>> _messages = [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final raw = widget.alignment['chat_history'];
+    if (raw is List) {
+      _messages = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+        _send(widget.initialMessage!);
+      } else {
+        _scrollToBottom(animated: false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  String _buildSystemContext() {
+    final a = widget.alignment;
+    final title = a['title'] as String? ?? 'Unknown';
+    final type = a['content_type'] as String? ?? 'article';
+    final url = a['url'] as String? ?? '';
+    final raw = a['analyses'];
+    final analyses =
+        raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+
+    final sb = StringBuffer()
+      ..writeln(
+          'You are a helpful assistant. The user is asking about content they analysed:')
+      ..writeln('Title: $title')
+      ..writeln('Type: $type')
+      ..writeln('URL: $url')
+      ..writeln();
+
+    final realismCheck = analyses['realism_check'];
+    if (realismCheck is List && realismCheck.isNotEmpty) {
+      sb.writeln('Realism Check (${realismCheck.length} claims):');
+      for (final c in realismCheck.take(6)) {
+        if (c is Map) sb.writeln('  ${c['claim']} → ${c['verdict']}');
+      }
+    }
+
+    final products = analyses['products'];
+    if (products is List && products.isNotEmpty) {
+      sb.writeln(
+          'Products: ${products.whereType<Map>().map((p) => p['product']).join(', ')}');
+    }
+
+    final timeline = analyses['timeline'];
+    if (timeline is List && timeline.isNotEmpty) {
+      sb.writeln('Timeline: ${timeline.length} events extracted.');
+    }
+
+    final similar = analyses['similar_content'];
+    if (similar is List && similar.isNotEmpty) {
+      sb.writeln('Similar content: ${similar.length} items found.');
+    }
+
+    sb.writeln('\nAnswer questions about this content concisely and helpfully.');
+    return sb.toString();
+  }
+
+  Future<void> _send(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _loading) return;
+
+    final userMsg = <String, dynamic>{
+      'role': 'user',
+      'content': trimmed,
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    setState(() {
+      _messages = [..._messages, userMsg];
+      _loading = true;
+    });
+    _scrollToBottom();
+
+    AnalysisService.saveChatHistory(
+            widget.alignmentId, List.from(_messages))
+        .ignore();
+
+    final response = await GeminiService.chat(
+      systemContext: _buildSystemContext(),
+      history: _messages
+          .map((m) => {
+                'role': m['role'] as String,
+                'content': m['content'] as String,
+              })
+          .toList(),
+    );
+
+    if (!mounted) return;
+
+    final assistantMsg = <String, dynamic>{
+      'role': 'assistant',
+      'content': response ?? "Sorry, I couldn't get a response. Please try again.",
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    setState(() {
+      _messages = [..._messages, assistantMsg];
+      _loading = false;
+    });
+    _scrollToBottom();
+
+    AnalysisService.saveChatHistory(
+            widget.alignmentId, List.from(_messages))
+        .ignore();
+  }
+
+  void _scrollToBottom({bool animated = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollCtrl.hasClients) return;
+      final max = _scrollCtrl.position.maxScrollExtent;
+      if (animated) {
+        _scrollCtrl.animateTo(max,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut);
+      } else {
+        _scrollCtrl.jumpTo(max);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+        child: Container(
+          color: isDark
+              ? const Color(0xFF1C1C1E).withAlpha(200)
+              : Colors.white.withAlpha(200),
+          child: Column(
+            children: [
+              // Drag handle
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF3A3A3C)
+                      : const Color(0xFFD1D1D6),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 16, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Ask about this Alignment',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    Tappable(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFF2F2F7),
+                        ),
+                        child: Icon(CupertinoIcons.xmark,
+                            size: 13, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  color: scheme.outline.withAlpha(60)),
+              // Messages
+              Expanded(
+                child: _messages.isEmpty && !_loading
+                    ? _ChatEmptyState(scheme: scheme)
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                        itemCount: _messages.length + (_loading ? 1 : 0),
+                        itemBuilder: (_, i) {
+                          if (i == _messages.length) {
+                            return const _TypingIndicator();
+                          }
+                          return _MessageBubble(
+                            message: _messages[i],
+                            isDark: isDark,
+                            scheme: scheme,
+                          );
+                        },
+                      ),
+              ),
+              // Input
+              Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  color: scheme.outline.withAlpha(60)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _ctrl,
+                        autofocus: true,
+                        textInputAction: TextInputAction.send,
+                        minLines: 1,
+                        maxLines: 4,
+                        onSubmitted: (t) {
+                          _send(t);
+                          _ctrl.clear();
+                        },
+                        style: GoogleFonts.inter(
+                            fontSize: 14, color: scheme.onSurface),
+                        decoration: InputDecoration(
+                          hintText: 'Message…',
+                          hintStyle: GoogleFonts.inter(
+                              fontSize: 14, color: scheme.onSurfaceVariant),
+                          filled: true,
+                          fillColor: isDark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFF2F2F7),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tappable(
+                      onTap: () {
+                        final t = _ctrl.text.trim();
+                        if (t.isNotEmpty) {
+                          _send(t);
+                          _ctrl.clear();
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: scheme.primary,
+                        ),
+                        child: Icon(CupertinoIcons.arrow_up,
+                            size: 16, color: scheme.onPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Chat message bubble ───────────────────────────────────────────────────────
+
+class _MessageBubble extends StatelessWidget {
+  final Map<String, dynamic> message;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  const _MessageBubble({
+    required this.message,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext _) {
+    final isUser = message['role'] == 'user';
+    final content = message['content'] as String? ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser)
+            Container(
+              width: 26,
+              height: 26,
+              margin: const EdgeInsets.only(right: 8, bottom: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: scheme.primary.withAlpha(18),
+              ),
+              child: Icon(CupertinoIcons.sparkles,
+                  size: 12, color: scheme.primary),
+            ),
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? scheme.primary
+                    : (isDark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7)),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+              ),
+              child: Text(
+                content,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: isUser ? scheme.onPrimary : scheme.onSurface,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Typing indicator ──────────────────────────────────────────────────────────
+
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            margin: const EdgeInsets.only(right: 8, bottom: 2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: scheme.primary.withAlpha(18),
+            ),
+            child: Icon(CupertinoIcons.sparkles,
+                size: 12, color: scheme.primary),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color:
+                  isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                return AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (_, _c) {
+                    final phase = (_ctrl.value * 3.0 - i).remainder(3.0);
+                    final t = (phase >= 0 && phase < 1.0) ? phase : 0.0;
+                    final opacity = 0.3 + 0.7 * sin(t * pi);
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: scheme.onSurfaceVariant.withValues(alpha: opacity),
+                      ),
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Chat empty state ──────────────────────────────────────────────────────────
+
+class _ChatEmptyState extends StatelessWidget {
+  final ColorScheme scheme;
+  const _ChatEmptyState({required this.scheme});
+
+  @override
+  Widget build(BuildContext _) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: scheme.primary.withAlpha(18),
+            ),
+            child: Icon(CupertinoIcons.sparkles,
+                color: scheme.primary, size: 24),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Ask anything',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Questions about claims, products,\ntimeline, or anything else.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );

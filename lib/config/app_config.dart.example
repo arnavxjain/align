@@ -1,0 +1,16 @@
+class AppConfig {
+  // Supabase — Project Settings → API
+  static const supabaseUrl = 'https://YOUR_PROJECT.supabase.co';
+  static const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+
+  // Google OAuth — Cloud Console → APIs & Services → Credentials
+  // Also add the iOS client ID to ios/Runner/GoogleService-Info.plist
+  static const googleWebClientId = 'YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com';
+
+  // Gemini — https://aistudio.google.com/apikey
+  static const geminiApiKey = 'YOUR_GEMINI_API_KEY';
+
+  // Reel download backend
+  static const reelBackendUrl = 'http://localhost:5001';
+  static const reelBackendApiKey = 'YOUR_REEL_BACKEND_KEY';
+}

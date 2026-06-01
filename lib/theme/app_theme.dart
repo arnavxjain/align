@@ -12,8 +12,8 @@ class AppTheme {
   // ── Dark palette ───────────────────────────────────────────────────────────
   static const _dLabel      = Color(0xFFFFFFFF);
   static const _dSecondary  = Color(0xFF8E8E93);
-  static const _dSurface    = Color(0xFF1C1C1E);
-  static const _dSeparator  = Color(0xFF38383A);
+  static const _dSurface    = Color(0xFF161618);
+  static const _dSeparator  = Color(0xFF2E2E30);
 
   static TextTheme _buildTextTheme(ThemeData base, Color label, Color secondary) =>
       GoogleFonts.interTextTheme(base.textTheme).copyWith(
@@ -74,7 +74,7 @@ class AppTheme {
   static ThemeData dark([Color primary = const Color(0xFF0A84FF)]) {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFF1C1C1E),
+      scaffoldBackgroundColor: const Color(0xFF0F0F11),
       colorScheme: base.colorScheme.copyWith(
         primary: primary,
         onPrimary: Colors.white,

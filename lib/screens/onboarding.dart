@@ -75,9 +75,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final lightTheme = Theme.of(context).copyWith(brightness: Brightness.light);
+    final scheme = lightTheme.colorScheme;
 
-    return Scaffold(
+    return Theme(
+      data: lightTheme,
+      child: Scaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -137,6 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

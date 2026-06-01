@@ -173,9 +173,9 @@ class _HomeState extends State<Home> {
               child: Stack(
                 children: [
                   BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                     child: Container(
-                      color: scaffoldBg.withAlpha(isDark ? 105 : 135),
+                      color: scaffoldBg.withAlpha(isDark ? 80 : 110),
                     ),
                   ),
                   Positioned(
@@ -341,7 +341,7 @@ class _HomeState extends State<Home> {
                                               final isAnalysing = alignment['is_analyzing'] == true;
                                               return Padding(
                                                 padding: EdgeInsets.only(
-                                                    bottom: i < filtered.length - 1 ? 10 : 0),
+                                                    bottom: 7),
                                                 child: Dismissible(
                                                   key: ValueKey(id),
                                                   direction: DismissDirection.endToStart,
@@ -414,18 +414,18 @@ class _NavBar extends StatelessWidget {
     final inactiveBg = isDark ? const Color(0xFF3A3A3C) : const Color(0xFFD1D1D6);
     final inactiveIcon = isDark ? Colors.white70 : const Color(0xFF636366);
     final borderColor = isDark
-        ? Colors.white.withAlpha(30)
-        : Colors.black.withAlpha(20);
+        ? Colors.white.withAlpha(50)
+        : Colors.black.withAlpha(35);
     final bgColor = isDark
-        ? const Color(0xFF1C1C1E).withAlpha(200)
-        : Colors.white.withAlpha(210);
+        ? const Color(0xFF1C1C1E).withAlpha(140)
+        : Colors.white.withAlpha(160);
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(50),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 80 : 40),
+            color: Colors.black.withAlpha(isDark ? 50 : 40),
             blurRadius: 28,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -435,7 +435,7 @@ class _NavBar extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(50),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -833,7 +833,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              color: scaffoldBg.withAlpha(isDark ? 155 : 195),
+              color: scaffoldBg.withAlpha(isDark ? 110 : 150),
             ),
           ),
           Align(
