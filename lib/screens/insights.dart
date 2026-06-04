@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:figma_squircle/figma_squircle.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -361,7 +362,7 @@ class _Content extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: _cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
           border: Border.all(color: _cardBorder, width: 1),
         ),
         child: Column(
@@ -397,7 +398,7 @@ class _Content extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
         border: Border.all(color: _cardBorder, width: 1),
       ),
       child: Column(
@@ -555,7 +556,7 @@ class _Content extends StatelessWidget {
                         width: constraints.maxWidth,
                         decoration: BoxDecoration(
                           color: trackColor,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: SmoothBorderRadius(cornerRadius: 4, cornerSmoothing: 0.6),
                         ),
                       ),
                       if (fraction > 0)
@@ -564,7 +565,7 @@ class _Content extends StatelessWidget {
                           width: constraints.maxWidth * fraction,
                           decoration: BoxDecoration(
                             color: scheme.primary,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: SmoothBorderRadius(cornerRadius: 4, cornerSmoothing: 0.6),
                           ),
                         ),
                     ],
@@ -611,8 +612,9 @@ class _Content extends StatelessWidget {
                   toY: data.last7Days[i].toDouble(),
                   color: scheme.primary,
                   width: 26,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(6),
+                  borderRadius: SmoothBorderRadius.only(
+                    topLeft: SmoothRadius(cornerRadius: 6, cornerSmoothing: 0.6),
+                    topRight: SmoothRadius(cornerRadius: 6, cornerSmoothing: 0.6),
                   ),
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
@@ -690,7 +692,7 @@ class _Content extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: scheme.primary.withAlpha(isDark ? 28 : 18),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
                 border: Border.all(
                   color: scheme.primary.withAlpha(isDark ? 55 : 38),
                   width: 1,
@@ -739,7 +741,7 @@ class _SkeletonBody extends StatelessWidget {
           width: double.infinity,
           height: height,
           decoration:
-              BoxDecoration(color: c, borderRadius: BorderRadius.circular(16)),
+              BoxDecoration(color: c, borderRadius: SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6)),
         );
 
     return Padding(

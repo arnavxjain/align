@@ -334,8 +334,8 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
+                            ClipSmoothRect(
+                              radius: SmoothBorderRadius(cornerRadius: 4, cornerSmoothing: 0.6),
                               child: _watchingBackground
                                   ? LinearProgressIndicator(
                                       minHeight: 4,
@@ -583,7 +583,7 @@ class _RealismItem extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: _verdictColor.withAlpha(isDark ? 45 : 25),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: SmoothBorderRadius(cornerRadius: 6, cornerSmoothing: 0.6),
                   border:
                       Border.all(color: _verdictColor.withAlpha(90), width: 1),
                 ),
@@ -681,7 +681,7 @@ class _TimelineItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: scheme.primary.withAlpha(20),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: SmoothBorderRadius(cornerRadius: 6, cornerSmoothing: 0.6),
             ),
             child: Text(
               position,
@@ -854,7 +854,7 @@ class _ChatBarState extends State<_ChatBar> {
 
   BoxDecoration _pillDecoration(bool isDark) => BoxDecoration(
         color: isDark ? Colors.white.withAlpha(22) : Colors.black.withAlpha(12),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
         border: Border.all(
           color: isDark ? Colors.white.withAlpha(45) : Colors.black.withAlpha(30),
           width: 0.8,
@@ -887,8 +887,8 @@ class _ChatBarState extends State<_ChatBar> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+            child: ClipSmoothRect(
+              radius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
                 child: Container(
@@ -959,8 +959,8 @@ class _ChatBarState extends State<_ChatBar> {
             const SizedBox(width: 8),
             Tappable(
               onTap: () => _openSheet(context),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
+              child: ClipSmoothRect(
+                radius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
                   child: Container(
@@ -1145,8 +1145,11 @@ class _ChatSheetState extends State<_ChatSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return ClipSmoothRect(
+      radius: SmoothBorderRadius.only(
+        topLeft: SmoothRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+        topRight: SmoothRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+      ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
         child: Container(
@@ -1164,7 +1167,7 @@ class _ChatSheetState extends State<_ChatSheet> {
                   color: isDark
                       ? const Color(0xFF3A3A3C)
                       : const Color(0xFFD1D1D6),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: SmoothBorderRadius(cornerRadius: 2, cornerSmoothing: 0.6),
                 ),
               ),
               // Header
@@ -1259,15 +1262,15 @@ class _ChatSheetState extends State<_ChatSheet> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
                             borderSide: BorderSide.none,
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
                             borderSide: BorderSide.none,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
                             borderSide: BorderSide.none,
                           ),
                         ),
@@ -1351,11 +1354,11 @@ class _MessageBubble extends StatelessWidget {
                     : (isDark
                         ? const Color(0xFF2C2C2E)
                         : const Color(0xFFF2F2F7)),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                borderRadius: SmoothBorderRadius.only(
+                  topLeft: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                  topRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                  bottomLeft: SmoothRadius(cornerRadius: isUser ? 16 : 4, cornerSmoothing: 0.6),
+                  bottomRight: SmoothRadius(cornerRadius: isUser ? 4 : 16, cornerSmoothing: 0.6),
                 ),
               ),
               child: Text(
@@ -1427,11 +1430,11 @@ class _TypingIndicatorState extends State<_TypingIndicator>
             decoration: BoxDecoration(
               color:
                   isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-                bottomLeft: Radius.circular(4),
+              borderRadius: SmoothBorderRadius.only(
+                topLeft: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                topRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                bottomRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                bottomLeft: SmoothRadius(cornerRadius: 4, cornerSmoothing: 0.6),
               ),
             ),
             child: Row(

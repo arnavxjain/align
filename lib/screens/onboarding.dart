@@ -98,7 +98,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: active ? 28 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: SmoothBorderRadius(cornerRadius: 4, cornerSmoothing: 0.6),
                     color: active
                         ? scheme.primary
                         : scheme.onSurface.withAlpha(40),

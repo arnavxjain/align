@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+
 class AppTheme {
   // ── Light palette ──────────────────────────────────────────────────────────
   static const _lLabel      = Color(0xFF1C1C1E);
@@ -12,8 +13,8 @@ class AppTheme {
   // ── Dark palette ───────────────────────────────────────────────────────────
   static const _dLabel      = Color(0xFFFFFFFF);
   static const _dSecondary  = Color(0xFF8E8E93);
-  static const _dSurface    = Color(0xFF161618);
-  static const _dSeparator  = Color(0xFF2E2E30);
+  static const _dSurface    = Color(0xFF1E1E20);
+  static const _dSeparator  = Color(0xFF363638);
 
   static TextTheme _buildTextTheme(ThemeData base, Color label, Color secondary) =>
       GoogleFonts.interTextTheme(base.textTheme).copyWith(
@@ -68,13 +69,14 @@ class AppTheme {
         backgroundColor: _lLabel,
         contentTextStyle: GoogleFonts.inter(fontSize: 14, color: Colors.white),
       ),
+
     );
   }
 
   static ThemeData dark([Color primary = const Color(0xFF0A84FF)]) {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFF0F0F11),
+      scaffoldBackgroundColor: const Color(0xFF171719),
       colorScheme: base.colorScheme.copyWith(
         primary: primary,
         onPrimary: Colors.white,
@@ -104,9 +106,10 @@ class AppTheme {
       dividerTheme: const DividerThemeData(color: _dSeparator, thickness: 0.8),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF2C2C2E),
+        backgroundColor: const Color(0xFF333335),
         contentTextStyle: GoogleFonts.inter(fontSize: 14, color: Colors.white),
       ),
+
     );
   }
 }

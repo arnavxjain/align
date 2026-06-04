@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: #000814; overflow: hidden; width: 100vw; height: 100vh; }
+    #globe { width: 100vw; height: 100vh; display: block; }
+    #zoom-controls {
+      position: fixed; bottom: 100px; right: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      z-index: 100;
+      background: rgba(255,255,255,0.07); border: 0.7px solid rgba(255,255,255,0.18);
+      border-radius: 50px; padding: 6px;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    }
+    #zoom-controls button {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: transparent; color: rgba(255,255,255,0.85);
+      font-size: 22px; font-weight: 300; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; transition: background 0.15s;
+    }
+    #zoom-controls button:active { background: rgba(255,255,255,0.15); }
+    #fade-overlay {
+      position: fixed; inset: 0; background: #000814;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease; z-index: 50;
+    }
+  </style>
+</head>
+<body>
+<div id="globe"></div>
+<div id="fade-overlay"></div>
+<div id="zoom-controls">
+  <button onclick="zoomIn()">+</button>
+  <button onclick="zoomOut()">−</button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
+<script>
+  const CENTROIDS = {
+    AF:[33.93,67.70],AL:[41.15,20.17],DZ:[28.03,1.65],AD:[42.54,1.60],
+    AO:[-11.20,17.87],AG:[17.06,-61.80],AR:[-38.41,-63.61],AM:[40.07,45.04],
+    AU:[-25.27,133.77],AT:[47.51,14.55],AZ:[40.14,47.57],BS:[25.03,-77.39],
+    BH:[26.02,50.55],BD:[23.68,90.35],BB:[13.19,-59.54],BY:[53.70,27.95],
+    BE:[50.50,4.46],BZ:[17.19,-88.49],BJ:[9.30,2.31],BT:[27.51,90.43],
+    BO:[-16.29,-63.58],BA:[43.92,17.67],BW:[-22.32,24.68],BR:[-14.23,-51.92],
+    BN:[4.53,114.73],BG:[42.73,25.48],BF:[12.36,-1.56],BI:[-3.37,29.91],
+    CV:[16.54,-23.04],KH:[12.56,104.99],CM:[3.85,11.50],CA:[56.13,-106.34],
+    CF:[6.61,20.93],TD:[15.45,18.73],CL:[-35.67,-71.54],CN:[35.86,104.19],
+    CO:[4.57,-74.29],KM:[-11.87,43.87],CG:[-0.23,15.82],CD:[-4.03,21.75],
+    CR:[9.74,-83.75],CI:[7.53,-5.55],HR:[45.10,15.20],CU:[21.52,-77.78],
+    CY:[35.12,33.42],CZ:[49.81,15.47],DK:[56.26,9.50],DJ:[11.82,42.59],
+    DM:[15.41,-61.37],DO:[18.73,-70.16],EC:[-1.83,-78.18],EG:[26.82,30.80],
+    SV:[13.79,-88.89],GQ:[1.65,10.26],ER:[15.17,39.78],EE:[58.59,25.01],
+    SZ:[-26.52,31.46],ET:[9.14,40.49],FJ:[-16.57,179.41],FI:[61.92,25.74],
+    FR:[46.22,2.21],GA:[-0.80,11.61],GM:[13.44,-15.31],GE:[42.31,43.35],
+    DE:[51.16,10.45],GH:[7.94,-1.02],GR:[39.07,21.82],GD:[12.11,-61.67],
+    GT:[15.78,-90.23],GN:[11.80,-11.69],GW:[11.80,-15.18],GY:[4.86,-58.93],
+    HT:[18.97,-72.28],HN:[15.19,-86.24],HU:[47.16,19.50],IS:[64.96,-19.02],
+    IN:[20.59,78.96],ID:[-0.78,113.92],IR:[32.42,53.68],IQ:[33.22,43.67],
+    IE:[53.41,-8.24],IL:[31.04,34.85],IT:[41.87,12.56],JM:[18.10,-77.29],
+    JP:[36.20,138.25],JO:[30.59,36.23],KZ:[48.01,66.92],KE:[-0.02,37.90],
+    KI:[1.87,-157.36],KP:[40.33,127.51],KR:[35.90,127.76],KW:[29.31,47.48],
+    KG:[41.20,74.76],LA:[19.85,102.49],LV:[56.88,24.60],LB:[33.85,35.86],
+    LS:[-29.61,28.23],LR:[6.43,-9.43],LY:[26.33,17.22],LI:[47.16,9.56],
+    LT:[55.16,23.88],LU:[49.81,6.13],MG:[-18.77,46.87],MW:[-13.25,34.30],
+    MY:[4.21,108.96],MV:[3.20,73.22],ML:[17.57,-3.99],MT:[35.93,14.37],
+    MH:[7.11,171.18],MR:[21.00,-10.94],MU:[-20.35,57.55],MX:[23.63,-102.55],
+    FM:[6.92,158.18],MD:[47.41,28.36],MC:[43.73,7.40],MN:[46.86,103.84],
+    ME:[42.70,19.37],MA:[31.79,-7.09],MZ:[-18.66,35.52],MM:[21.91,95.95],
+    NA:[-22.95,18.49],NR:[-0.52,166.93],NP:[28.39,84.12],NL:[52.13,5.29],
+    NZ:[-40.90,174.88],NI:[12.86,-85.21],NE:[17.60,8.08],NG:[9.08,8.67],
+    MK:[41.60,21.74],NO:[60.47,8.46],OM:[21.47,55.97],PK:[30.37,69.34],
+    PW:[7.51,134.58],PA:[8.53,-80.78],PG:[-6.31,143.95],PY:[-23.44,-58.44],
+    PE:[-9.19,-75.01],PH:[12.87,121.77],PL:[51.91,19.14],PT:[39.39,-8.22],
+    QA:[25.35,51.18],RO:[45.94,24.96],RU:[61.52,105.31],RW:[-1.94,29.87],
+    KN:[17.35,-62.78],LC:[13.90,-60.97],VC:[12.98,-61.29],WS:[-13.76,-172.10],
+    SM:[43.94,12.46],ST:[0.18,6.61],SA:[23.88,45.07],SN:[14.49,-14.45],
+    RS:[44.01,21.00],SC:[-4.67,55.49],SL:[8.46,-11.78],SG:[1.35,103.82],
+    SK:[48.66,19.69],SI:[46.15,14.99],SB:[-9.64,160.16],SO:[5.15,46.19],
+    ZA:[-30.55,22.93],SS:[6.88,31.30],ES:[40.46,-3.74],LK:[7.87,80.77],
+    SD:[12.86,30.22],SR:[3.92,-56.02],SE:[60.12,18.64],CH:[46.81,8.22],
+    SY:[34.80,38.99],TW:[23.70,120.96],TJ:[38.86,71.27],TZ:[-6.37,34.88],
+    TH:[15.87,100.99],TL:[-8.87,125.73],TG:[8.61,0.82],TO:[-21.18,-175.20],
+    TT:[10.69,-61.22],TN:[33.89,9.53],TR:[38.96,35.24],TM:[40.55,55.01],
+    TV:[-7.11,177.64],UG:[1.37,32.29],UA:[48.37,31.16],AE:[23.42,53.84],
+    GB:[55.37,-3.44],US:[37.09,-95.71],UY:[-32.52,-55.76],UZ:[41.37,64.58],
+    VU:[-15.37,166.96],VE:[6.42,-66.58],VN:[14.05,108.27],YE:[15.55,48.51],
+    ZM:[-13.13,27.84],ZW:[-19.02,29.15],PS:[31.95,35.23],XK:[42.60,20.90],
+    HK:[22.32,114.17],MO:[22.16,113.55],PR:[18.22,-66.59],CW:[12.16,-68.97],
+    AX:[60.21,19.93],GF:[3.93,-53.12],NC:[-20.90,165.61],PF:[-17.68,-149.41]
+  };
+
+  var globe, pendingData, globeReady = false;
+  var currentView = 'analyses';
+  var marketDataMap = {};
+  var geoLoaded = false;
+  var lastAnalysesData = [];
+  var pendingMarketData = null;
+  var pendingGeoJson = null;
+
+  function getMarketColor(pctStr) {
+    var pct = parseFloat(pctStr);
+    if (isNaN(pct)) return 'rgba(255,255,255,0.05)';
+    var abs = Math.abs(pct);
+    if (pct >= 0) {
+      if (abs < 0.5)  return 'rgba(0,200,100,0.3)';
+      if (abs < 1.5)  return 'rgba(0,200,100,0.55)';
+      return 'rgba(0,200,100,0.85)';
+    } else {
+      if (abs < 0.5)  return 'rgba(255,60,60,0.3)';
+      if (abs < 1.5)  return 'rgba(255,60,60,0.55)';
+      return 'rgba(255,60,60,0.85)';
+    }
+  }
+
+  function buildPoints(data) {
+    var pts = [], rings = [];
+    data.forEach(function(d) {
+      var c = CENTROIDS[d.code];
+      if (!c) return;
+      var n = Math.max(1, d.count);
+      var intensity = Math.min(n / 5, 1);
+      var g = Math.round(210 + intensity * 45);
+      var r = Math.round(20 + intensity * 37);
+      var color = 'rgba(' + r + ',' + g + ',14,1.0)';
+      pts.push({ code: d.code, lat: c[0], lng: c[1], color: color, size: 0.55 + n * 0.18 });
+      rings.push({
+        lat: c[0], lng: c[1], maxR: 6.0 + n * 1.0,
+        colorFn: (function(rVal, gVal) {
+          return function(t) {
+            var opacity = Math.max(0, (1 - t * t) * 0.85);
+            return 'rgba(' + rVal + ',' + gVal + ',14,' + opacity.toFixed(2) + ')';
+          };
+        })(r, g),
+      });
+    });
+    return { pts: pts, rings: rings };
+  }
+
+  function applyData(data) {
+    lastAnalysesData = data;
+    var built = buildPoints(data);
+    globe.pointsData(built.pts).ringsData(built.rings);
+    if (window.GlobeReady) window.GlobeReady.postMessage('ok');
+  }
+
+  function applyGeoJson(data) {
+    globe
+      .polygonsData(data.features)
+      .polygonCapColor(function() { return 'rgba(0,60,120,0.3)'; })
+      .polygonSideColor(function() { return 'rgba(0,60,120,0.15)'; })
+      .polygonStrokeColor(function() { return 'rgba(0,180,255,0.5)'; })
+      .polygonAltitude(0.005);
+    geoLoaded = true;
+    console.log('[Globe] GeoJSON applied: ' + data.features.length + ' features');
+    if (window.GlobeStatus) window.GlobeStatus.postMessage('geojson_ok:' + data.features.length);
+    if (pendingMarketData !== null) {
+      marketDataMap = pendingMarketData;
+      pendingMarketData = null;
+    }
+    if (currentView === 'markets') applyMarketsView();
+  }
+
+  window.setGeoJson = function(data) {
+    if (!globe) { pendingGeoJson = data; return; }
+    applyGeoJson(data);
+  };
+
+  function applyMarketsView() {
+    globe
+      .polygonCapColor(function(feat) {
+        var code = feat.properties.ISO_A2;
+        var d = marketDataMap[code];
+        if (!d) return 'rgba(50,50,80,0.45)';
+        return getMarketColor(d.percent_change);
+      })
+      .polygonSideColor(function() { return 'rgba(0,0,0,0.15)'; })
+      .polygonStrokeColor(function() { return 'rgba(255,255,255,0.12)'; })
+      .polygonAltitude(0.008);
+  }
+
+  function zoomIn() {
+    if (!globe) return;
+    var pov = globe.pointOfView();
+    globe.pointOfView({ altitude: Math.max(1.2, pov.altitude * 0.72) }, 350);
+  }
+
+  function zoomOut() {
+    if (!globe) return;
+    var pov = globe.pointOfView();
+    globe.pointOfView({ altitude: Math.min(9.0, pov.altitude * 1.38) }, 350);
+  }
+
+  function boot() {
+    var el = document.getElementById('globe');
+    globe = Globe({ animateIn: true })(el)
+      .width(window.innerWidth)
+      .height(window.innerHeight)
+      .backgroundColor('#000814')
+      .atmosphereColor('rgba(0,180,255,0.9)')
+      .atmosphereAltitude(0.25)
+      .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+      .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+      .pointsData([])
+      .pointLat('lat').pointLng('lng').pointColor('color').pointRadius('size')
+      .pointAltitude(0.01)
+      .ringsData([])
+      .ringLat('lat').ringLng('lng')
+      .ringColor(function(d) { return d.colorFn; })
+      .ringMaxRadius('maxR').ringPropagationSpeed(3.0).ringRepeatPeriod(1200)
+      .onPointClick(function(d) {
+        if (currentView !== 'analyses') return;
+        if (window.CountryTapped) window.CountryTapped.postMessage(d.code);
+      })
+      .onPolygonClick(function(feat) {
+        if (currentView !== 'markets') return;
+        var code = feat.properties.ISO_A2;
+        if (code && code !== '-99' && window.MarketCountryTapped) {
+          window.MarketCountryTapped.postMessage(code);
+        }
+      });
+
+    var ctl = globe.controls();
+    ctl.autoRotate = true;
+    ctl.autoRotateSpeed = 0.4;
+    ctl.enableDamping = true;
+    ctl.dampingFactor = 0.08;
+    ctl.minDistance = 150;
+    ctl.maxDistance = 900;
+    globe.pointOfView({ altitude: 1.2 });
+
+    var resumeTimer;
+    el.addEventListener('pointerdown', function() { clearTimeout(resumeTimer); ctl.autoRotate = false; });
+    el.addEventListener('pointerup', function() {
+      resumeTimer = setTimeout(function() { ctl.autoRotate = true; }, 3000);
+    });
+    window.addEventListener('resize', function() { globe.width(window.innerWidth).height(window.innerHeight); });
+
+    // GeoJSON is injected from Flutter via setGeoJson() — apply if it arrived early.
+    if (pendingGeoJson) { applyGeoJson(pendingGeoJson); pendingGeoJson = null; }
+
+    globeReady = true;
+    if (pendingData) { applyData(pendingData); pendingData = null; }
+  }
+
+  window.setCountryData = function(obj) {
+    var arr = Object.keys(obj).map(function(code) { return { code: code, count: obj[code] }; });
+    if (globeReady) { applyData(arr); } else { pendingData = arr; }
+  };
+
+  window.setMarketData = function(obj) {
+    marketDataMap = obj;
+    if (!geoLoaded) {
+      // GeoJSON not ready yet — store and apply once it finishes loading
+      pendingMarketData = obj;
+    } else if (currentView === 'markets') {
+      applyMarketsView();
+    }
+  };
+
+  window.showAnalysesView = function() {
+    if (!globe) return;
+    currentView = 'analyses';
+    var built = buildPoints(lastAnalysesData);
+    globe
+      .pointsData(built.pts).ringsData(built.rings)
+      .polygonCapColor(function() { return 'rgba(0,60,120,0.3)'; })
+      .polygonSideColor(function() { return 'rgba(0,60,120,0.15)'; })
+      .polygonStrokeColor(function() { return 'rgba(0,180,255,0.5)'; })
+      .polygonAltitude(0.005);
+  };
+
+  window.showMarketsView = function() {
+    if (!globe) return;
+    currentView = 'markets';
+    globe.pointsData([]).ringsData([]);
+    if (geoLoaded) applyMarketsView();
+  };
+
+  function tryBoot() {
+    if (typeof Globe !== 'undefined') { boot(); } else { setTimeout(tryBoot, 500); }
+  }
+  window.addEventListener('load', tryBoot);
+</script>
+</body>
+</html>

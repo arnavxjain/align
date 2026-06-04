@@ -57,6 +57,7 @@ class AnalysisService {
     required bool identifyProducts,
     required bool createTimeline,
     required bool findSimilar,
+    bool useProModel = false,
   }) {
     final entry = <String, dynamic>{
       'id': _uuid.v4(),
@@ -71,6 +72,7 @@ class AnalysisService {
         'identify_products': identifyProducts,
         'create_timeline': createTimeline,
         'find_similar': findSimilar,
+        'use_pro_model': useProModel,
       },
     };
     alignmentsNotifier.value = [entry, ...alignmentsNotifier.value];
@@ -100,6 +102,7 @@ class AnalysisService {
       final identifyProducts = opts['identify_products'] as bool? ?? false;
       final createTimeline = opts['create_timeline'] as bool? ?? false;
       final findSimilar = opts['find_similar'] as bool? ?? false;
+      final useProModel = opts['use_pro_model'] as bool? ?? false;
 
       var cur = Map<String, dynamic>.from(pendingEntry);
 
@@ -149,6 +152,7 @@ class AnalysisService {
           geminiFileUri: geminiFileUri,
           prompt: prompt,
           useSearch: useSearch,
+          usePro: useProModel,
         );
         step();
         if (r != null) {
@@ -201,6 +205,16 @@ class AnalysisService {
           key: 'similar_content',
         );
       }
+
+      // Extract countries (lightweight, always runs) — must run before file deletion
+      final countries = await GeminiService.extractCountries(
+        url: url,
+        isYouTube: isYouTube,
+        geminiFileUri: geminiFileUri,
+        usePro: useProModel,
+      );
+      cur['countries'] = countries;
+      _update(id, cur);
 
       if (geminiFileUri != null) await ReelService.deleteGeminiFile(geminiFileUri);
 

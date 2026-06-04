@@ -1,0 +1,230 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "app-check",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/app-check.git",
+          "name" : "AppCheck"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "61b85103a1aeed8218f17c794687781505fbbef5",
+            "version" : "11.2.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "app-check"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "app_links-7.0.0",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/app_links-7.0.0",
+          "name" : "app_links"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/app_links-7.0.0"
+        },
+        "subpath" : "app_links-7.0.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "appauth-ios",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/openid/AppAuth-iOS.git",
+          "name" : "AppAuth"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "2781038865a80e2c425a1da12cc1327bcd56501f",
+            "version" : "1.7.6"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "AppAuth-iOS"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "flutter_native_splash-2.4.7",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/flutter_native_splash-2.4.7",
+          "name" : "flutter_native_splash"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/flutter_native_splash-2.4.7"
+        },
+        "subpath" : "flutter_native_splash-2.4.7"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "flutterframework",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/FlutterFramework",
+          "name" : "FlutterFramework"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/FlutterFramework"
+        },
+        "subpath" : "flutterframework"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "google_sign_in_ios-5.9.0",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/google_sign_in_ios-5.9.0",
+          "name" : "google_sign_in_ios"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/google_sign_in_ios-5.9.0"
+        },
+        "subpath" : "google_sign_in_ios-5.9.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "googlesignin-ios",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleSignIn-iOS.git",
+          "name" : "GoogleSignIn"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "65fb3f1aa6ffbfdc79c4e22178a55cd91561f5e9",
+            "version" : "8.0.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GoogleSignIn-iOS"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "googleutilities",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleUtilities.git",
+          "name" : "GoogleUtilities"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "60da361632d0de02786f709bdc0c4df340f7613e",
+            "version" : "8.1.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GoogleUtilities"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "gtm-session-fetcher",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/gtm-session-fetcher.git",
+          "name" : "GTMSessionFetcher"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "a2ab612cb980066ee56d90d60d8462992c07f24b",
+            "version" : "3.5.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "gtm-session-fetcher"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "gtmappauth",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GTMAppAuth.git",
+          "name" : "GTMAppAuth"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "5d7d66f647400952b1758b230e019b07c0b4b22a",
+            "version" : "4.1.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GTMAppAuth"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "promises",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/promises.git",
+          "name" : "Promises"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "540318ecedd63d883069ae7f1ed811a2df00b6ac",
+            "version" : "2.4.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "promises"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "shared_preferences_foundation-2.5.6",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/shared_preferences_foundation-2.5.6",
+          "name" : "shared_preferences_foundation"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/shared_preferences_foundation-2.5.6"
+        },
+        "subpath" : "shared_preferences_foundation-2.5.6"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "url_launcher_ios-6.4.1",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/url_launcher_ios-6.4.1",
+          "name" : "url_launcher_ios"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/url_launcher_ios-6.4.1"
+        },
+        "subpath" : "url_launcher_ios-6.4.1"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "webview_flutter_wkwebview-3.25.1",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/webview_flutter_wkwebview-3.25.1",
+          "name" : "webview_flutter_wkwebview"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/webview_flutter_wkwebview-3.25.1"
+        },
+        "subpath" : "webview_flutter_wkwebview-3.25.1"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

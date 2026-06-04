@@ -2,11 +2,15 @@ import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../screens/alignment_detail.dart';
+import '../screens/paywall_screen.dart';
 import '../services/analysis_service.dart';
+import '../services/subscription_service.dart';
+import '../utils/transitions.dart';
 import '../widgets/tappable.dart';
 
 class NewAlignmentScreen extends StatefulWidget {
@@ -22,6 +26,13 @@ class _NewAlignmentScreenState extends State<NewAlignmentScreen> {
   bool _identifyProducts = false;
   bool _createTimeline = false;
   bool _findSimilarContent = false;
+  bool _useProModel = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _useProModel = SubscriptionService.instance.isPro.value;
+  }
 
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -44,12 +55,11 @@ class _NewAlignmentScreenState extends State<NewAlignmentScreen> {
       identifyProducts: _identifyProducts,
       createTimeline: _createTimeline,
       findSimilar: _findSimilarContent,
+      useProModel: _useProModel,
     );
     Navigator.pushReplacement(
       context,
-      CupertinoPageRoute(
-        builder: (_) => AlignmentDetailScreen(alignmentId: entry['id'] as String),
-      ),
+      AppRoute.push(AlignmentDetailScreen(alignmentId: entry['id'] as String)),
     );
   }
 
@@ -105,6 +115,8 @@ class _NewAlignmentScreenState extends State<NewAlignmentScreen> {
                               onTimelineChanged: (v) => setState(() => _createTimeline = v),
                               findSimilarContent: _findSimilarContent,
                               onFindSimilarChanged: (v) => setState(() => _findSimilarContent = v),
+                              useProModel: _useProModel,
+                              onProModelChanged: (v) => setState(() => _useProModel = v),
                               scheme: scheme,
                               isDark: isDark,
                             ),
@@ -159,7 +171,7 @@ class _Header extends StatelessWidget {
                     ? const Color(0xFF2C2C2E)
                     : const Color(0xFFE5E5EA),
               ),
-              child: Icon(CupertinoIcons.chevron_left,
+              child: Icon(CupertinoIcons.multiply,
                   color: scheme.onSurface, size: 16),
             ),
           ),
@@ -296,6 +308,8 @@ class _OptionsSection extends StatelessWidget {
   final ValueChanged<bool> onTimelineChanged;
   final bool findSimilarContent;
   final ValueChanged<bool> onFindSimilarChanged;
+  final bool useProModel;
+  final ValueChanged<bool> onProModelChanged;
   final ColorScheme scheme;
   final bool isDark;
 
@@ -309,6 +323,8 @@ class _OptionsSection extends StatelessWidget {
     required this.onTimelineChanged,
     required this.findSimilarContent,
     required this.onFindSimilarChanged,
+    required this.useProModel,
+    required this.onProModelChanged,
     required this.scheme,
     required this.isDark,
   });
@@ -377,6 +393,15 @@ class _OptionsSection extends StatelessWidget {
             value: findSimilarContent,
             onChanged: onFindSimilarChanged,
             scheme: scheme,
+          ),
+          const SizedBox(height: 20),
+          Container(height: 0.5, color: scheme.outline.withAlpha(60)),
+          const SizedBox(height: 20),
+          _ProToggleRow(
+            value: useProModel,
+            onChanged: onProModelChanged,
+            scheme: scheme,
+            isDark: isDark,
           ),
         ],
       ),
@@ -505,7 +530,7 @@ class _SwipeToGoButtonState extends State<_SwipeToGoButton>
                   width: _thumbW,
                   height: _thumbH,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(_thumbH / 2),
+                    borderRadius: SmoothBorderRadius(cornerRadius: _thumbH / 2, cornerSmoothing: 0.6),
                     color: Colors.black,
                     boxShadow: const [
                       BoxShadow(
@@ -530,6 +555,123 @@ class _SwipeToGoButtonState extends State<_SwipeToGoButton>
       );
     }),
       ),
+    );
+  }
+}
+
+// ── Pro model toggle row ──────────────────────────────────────────────────────
+
+class _ProToggleRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final ColorScheme scheme;
+  final bool isDark;
+
+  const _ProToggleRow({
+    required this.value,
+    required this.onChanged,
+    required this.scheme,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: SubscriptionService.instance.isPro,
+      builder: (context, isPro, _) {
+        final locked = !isPro;
+
+        return Tappable(
+          onTap: locked
+              ? () => Navigator.push(context, AppRoute.modal(const PaywallScreen()))
+              : () => onChanged(!value),
+          child: Opacity(
+            opacity: locked ? 0.55 : 1.0,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SvgPicture.asset(
+                            'lib/assets/logo-pro.svg',
+                            width: 15,
+                            height: 15,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            'Use Gemini 2.5 Pro',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Deeper, more accurate analysis',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (locked)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: ShapeDecoration(
+                      color: scheme.primary.withAlpha(isDark ? 40 : 25),
+                      shape: SmoothRectangleBorder(
+                        borderRadius: SmoothBorderRadius(
+                            cornerRadius: 8, cornerSmoothing: 0.6),
+                        side: BorderSide(
+                          color: scheme.primary.withAlpha(isDark ? 70 : 50),
+                          width: 0.8,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'PRO',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  )
+                else
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: value ? scheme.primary : Colors.transparent,
+                      border: Border.all(
+                        color: value
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant.withAlpha(80),
+                        width: 2,
+                      ),
+                    ),
+                    child: value
+                        ? Icon(CupertinoIcons.checkmark,
+                            size: 14, color: scheme.onPrimary)
+                        : null,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

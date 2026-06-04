@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:align/screens/globe_screen.dart';
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +12,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/theme_notifier.dart';
 import '../screens/alignment_detail.dart';
+import '../screens/milestone_modal.dart';
 import '../screens/new_alignment.dart';
+import '../screens/paywall_screen.dart';
 import '../services/analysis_service.dart';
+import '../services/milestone_service.dart';
 import '../screens/insights.dart';
 import '../screens/profile.dart';
+import '../utils/transitions.dart';
 import '../widgets/tappable.dart';
 
 class Home extends StatefulWidget {
@@ -24,9 +29,8 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-// null color → falls back to scheme.primary at runtime
 const _kFilters = <(String, String, Color?, IconData?)>[
-  ('youtube',  'YouTube',      Color(0xFFFF3B30), CupertinoIcons.play_rectangle_fill),
+  ('youtube',  'YouTube',      Colors.red, CupertinoIcons.play_rectangle_fill),
   ('reel',     'Reel',         Color(0xFFBF5AF2), CupertinoIcons.film_fill),
   ('article',  'Article',      null,              CupertinoIcons.doc_text_fill),
   ('2plus',    '2+ Analyses',  null,              null),
@@ -38,6 +42,7 @@ class _HomeState extends State<Home> {
   String? _firstName;
   bool _isLoading = true;
   final Set<String> _activeFilters = {};
+  int _prevCompletedCount = 0;
 
   String get _initial {
     final email = _user?.email ?? '';
@@ -64,6 +69,32 @@ class _HomeState extends State<Home> {
     _loadFirstName();
     _loadAlignments();
     AnalysisService.loadStarred();
+    alignmentsNotifier.addListener(_onAlignmentsChanged);
+  }
+
+  @override
+  void dispose() {
+    alignmentsNotifier.removeListener(_onAlignmentsChanged);
+    super.dispose();
+  }
+
+  void _onAlignmentsChanged() {
+    final completed = alignmentsNotifier.value
+        .where((a) => a['is_analyzing'] != true)
+        .length;
+    if (completed > _prevCompletedCount) {
+      _prevCompletedCount = completed;
+      _checkMilestones(completed);
+    }
+  }
+
+  Future<void> _checkMilestones(int count) async {
+    if (!mounted) return;
+    final unseen = await MilestoneService.firstUnseenMilestone(count);
+    if (unseen != null && mounted) {
+      await MilestoneService.markSeen(unseen.count);
+      if (mounted) await MilestoneModal.show(context, unseen);
+    }
   }
 
   String _todayLabel() {
@@ -195,7 +226,7 @@ class _HomeState extends State<Home> {
                 SvgPicture.asset(
                   'lib/assets/logo.svg',
                   width: 28,
-                  height: 27,
+                  height: 29,
                   colorFilter: ColorFilter.mode(scheme.onSurface, BlendMode.srcIn),
                 ),
                 const SizedBox(width: 10),
@@ -234,14 +265,24 @@ class _HomeState extends State<Home> {
             ),
             actions: [
               Tappable(
+                scaleOnPress: true,
+                onTap: () => Navigator.push(
+                  context,
+                  AppRoute.modal(const PaywallScreen()),
+                ),
                 child: Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isDark ? const Color(0xFF333333) : const Color(0xFFE5E5EA),
                   ),
-                  child: Icon(CupertinoIcons.star_fill,
-                      color: scheme.onSurface, size: 18),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'lib/assets/logo-pro.svg',
+                      // width: 20,
+                      height: 17,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -250,7 +291,7 @@ class _HomeState extends State<Home> {
                 child: Tappable(
                   onTap: () => Navigator.push(
                     context,
-                    CupertinoPageRoute(builder: (_) => const ProfileScreen()),
+                    AppRoute.push(const ProfileScreen()),
                   ),
                   child: _Avatar(initial: _initial, primary: scheme.primary),
                 ),
@@ -299,7 +340,7 @@ class _HomeState extends State<Home> {
                         valueListenable: starredNotifier,
                         builder: (context, starred, _) {
                           return Padding(
-                            padding: const EdgeInsets.only(top: 10, bottom: 150),
+                            padding: const EdgeInsets.only(top: 20, bottom: 150),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -311,10 +352,9 @@ class _HomeState extends State<Home> {
                                         ? 'Recent'
                                         : '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
                                     style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurfaceVariant,
-                                      letterSpacing: -0.2,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ),
@@ -340,8 +380,8 @@ class _HomeState extends State<Home> {
                                               final id = alignment['id'] as String? ?? '$i';
                                               final isAnalysing = alignment['is_analyzing'] == true;
                                               return Padding(
-                                                padding: EdgeInsets.only(
-                                                    bottom: 7),
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 10),
                                                 child: Dismissible(
                                                   key: ValueKey(id),
                                                   direction: DismissDirection.endToStart,
@@ -353,6 +393,8 @@ class _HomeState extends State<Home> {
                                                       ? null
                                                       : (_) => AnalysisService.deleteAlignment(id),
                                                   child: _AlignmentTile(
+                                                    key: ValueKey('tile_$id'),
+                                                    index: i,
                                                     alignment: alignment,
                                                     isStarred: starred.contains(id),
                                                     isAnalysing: isAnalysing,
@@ -360,10 +402,7 @@ class _HomeState extends State<Home> {
                                                     scheme: scheme,
                                                     onTap: () => Navigator.push(
                                                       context,
-                                                      CupertinoPageRoute(
-                                                        builder: (_) => AlignmentDetailScreen(
-                                                            alignmentId: id),
-                                                      ),
+                                                      AppRoute.push(AlignmentDetailScreen(alignmentId: id)),
                                                     ),
                                                   ),
                                                 ),
@@ -422,7 +461,7 @@ class _NavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(isDark ? 50 : 40),
@@ -432,34 +471,39 @@ class _NavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(50),
+      child: ClipSmoothRect(
+        radius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(50),
+              borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
               border: Border.all(color: borderColor, width: 0.7),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Tappable(
-                  onTap: () {},
+                  scaleOnPress: true,
+                  onTap: () => Navigator.push(
+                    context,
+                    AppRoute.push(const GlobeScreen()),
+                  ),
                   child: Container(
                     width: 45,
                     height: 45,
                     decoration: BoxDecoration(color: inactiveBg.withValues(alpha: 0.5), shape: BoxShape.circle),
-                    child: Icon(PhosphorIcons.cube, color: inactiveIcon, size: 18),
+                    child: Icon(CupertinoIcons.globe, color: inactiveIcon, size: 18),
                   ),
                 ),
                 const SizedBox(width: 6),
                 Tappable(
+                  scaleOnPress: true,
                   onTap: () => Navigator.push(
                     context,
-                    CupertinoPageRoute(builder: (_) => const InsightsScreen()),
+                    AppRoute.push(const InsightsScreen()),
                   ),
                   child: Container(
                     width: 45,
@@ -470,9 +514,10 @@ class _NavBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Tappable(
+                  scaleOnPress: true,
                   onTap: () => Navigator.push(
                     context,
-                    CupertinoPageRoute(builder: (_) => const NewAlignmentScreen()),
+                    AppRoute.modal(const NewAlignmentScreen()),
                   ),
                   child: Container(
                     width: 45,
@@ -499,6 +544,7 @@ class _AlignmentTile extends StatefulWidget {
   final bool isDark;
   final ColorScheme scheme;
   final VoidCallback onTap;
+  final int index;
 
   const _AlignmentTile({
     required this.alignment,
@@ -507,6 +553,8 @@ class _AlignmentTile extends StatefulWidget {
     required this.isDark,
     required this.scheme,
     required this.onTap,
+    required this.index,
+    super.key,
   });
 
   @override
@@ -514,8 +562,11 @@ class _AlignmentTile extends StatefulWidget {
 }
 
 class _AlignmentTileState extends State<_AlignmentTile>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _sweep;
+  late AnimationController _entry;
+  late Animation<double> _entryFade;
+  late Animation<Offset> _entrySlide;
 
   @override
   void initState() {
@@ -525,6 +576,25 @@ class _AlignmentTileState extends State<_AlignmentTile>
       duration: const Duration(milliseconds: 1800),
     );
     if (widget.isAnalysing) _sweep.repeat();
+
+    _entry = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _entryFade = CurvedAnimation(parent: _entry, curve: Curves.easeOut);
+    _entrySlide = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
+
+    final delay = widget.index.clamp(0, 5) * 40;
+    if (delay == 0) {
+      _entry.forward();
+    } else {
+      Future.delayed(Duration(milliseconds: delay), () {
+        if (mounted) _entry.forward();
+      });
+    }
   }
 
   @override
@@ -540,6 +610,7 @@ class _AlignmentTileState extends State<_AlignmentTile>
   @override
   void dispose() {
     _sweep.dispose();
+    _entry.dispose();
     super.dispose();
   }
 
@@ -593,30 +664,27 @@ class _AlignmentTileState extends State<_AlignmentTile>
 
     Widget tile = Tappable(
       onTap: widget.onTap,
+      scaleOnPress: true,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: ShapeDecoration(
-          color: widget.isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          color: widget.isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.03),
           shape: SmoothRectangleBorder(
             borderRadius:
                 SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-            side: BorderSide(
-              color: widget.isDark
-                  ? const Color(0xFF3A3A3C)
-                  : const Color(0xFFE5E5EA),
-              width: 1,
-            ),
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 42, height: 42,
+              width: 38, height: 38,
               decoration: BoxDecoration(
-                color: color.withAlpha(widget.isDark ? 40 : 25),
+                color: color.withValues(alpha: widget.isDark ? 0.12 : 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 16),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -628,10 +696,11 @@ class _AlignmentTileState extends State<_AlignmentTile>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: widget.scheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: widget.scheme.onSurface.withValues(alpha: 0.85),
                       height: 1.3,
+                      letterSpacing: -0.1
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -648,34 +717,30 @@ class _AlignmentTileState extends State<_AlignmentTile>
                           '$typeLabel · $count ${count == 1 ? 'Analysis' : 'Analyses'}',
                           style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: widget.scheme.onSurfaceVariant),
+                              color: widget.isDark
+                                  ? Colors.white.withValues(alpha: 0.35)
+                                  : Colors.black.withValues(alpha: 0.35)),
                         ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.isStarred) ...[
-                      const Icon(CupertinoIcons.star_fill,
-                          size: 11, color: Color(0xFFFF9F0A)),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      _relativeTime(createdAt),
-                      style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: widget.scheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Icon(CupertinoIcons.chevron_right,
-                    color: widget.scheme.onSurfaceVariant, size: 14),
+                if (widget.isStarred) ...[
+                  const Icon(CupertinoIcons.star_fill,
+                      size: 11, color: Color(0xFFFF9F0A)),
+                  const SizedBox(width: 4),
+                ],
+                // Text(
+                //   _relativeTime(createdAt),
+                //   style: GoogleFonts.inter(
+                //       fontSize: 12,
+                //       color: widget.isDark
+                //           ? Colors.white.withValues(alpha: 0.35)
+                //           : Colors.black.withValues(alpha: 0.35)),
+                // ),
               ],
             ),
           ],
@@ -683,26 +748,33 @@ class _AlignmentTileState extends State<_AlignmentTile>
       ),
     );
 
-    if (!widget.isAnalysing) return tile;
-
-    // Wrap with animated sweep border while analysing.
-    return Stack(
-      children: [
-        tile,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: _sweep,
-              builder: (_, __) => CustomPaint(
-                painter: _SweepBorderPainter(
-                  progress: _sweep.value,
-                  color: widget.scheme.primary,
+    final Widget body = widget.isAnalysing
+        ? Stack(
+            children: [
+              tile,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _sweep,
+                    builder: (_, __) => CustomPaint(
+                      painter: _SweepBorderPainter(
+                        progress: _sweep.value,
+                        color: widget.scheme.primary,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
-      ],
+            ],
+          )
+        : tile;
+
+    return FadeTransition(
+      opacity: _entryFade,
+      child: SlideTransition(
+        position: _entrySlide,
+        child: body,
+      ),
     );
   }
 }
@@ -826,56 +898,70 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              color: scaffoldBg.withAlpha(isDark ? 110 : 150),
-            ),
-          ),
-          Align(
-            child: SizedBox(
-              height: 34,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _kFilters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final (key, label, chipColor, icon) = _kFilters[i];
-                  final active = activeFilters.contains(key);
-                  final color = chipColor ?? scheme.primary;
-                  return _FilterChip(
-                    label: label,
-                    active: active,
-                    color: color,
-                    icon: icon,
-                    isDark: isDark,
-                    onTap: () => onToggle(key),
-                  );
-                },
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedOpacity(
-              opacity: overlapsContent ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        boxShadow: overlapsContent
+            ? [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isDark ? 55 : 22),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : const [],
+      ),
+      child: ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                height: 0.5,
-                color: isDark
-                    ? const Color(0xFF424242)
-                    : const Color(0xFFD1D1D6),
+                color: scaffoldBg.withAlpha(isDark ? 110 : 150),
               ),
             ),
-          ),
-        ],
+            Align(
+              child: SizedBox(
+                height: 34,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _kFilters.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final (key, label, chipColor, icon) = _kFilters[i];
+                    final active = activeFilters.contains(key);
+                    final color = chipColor ?? scheme.primary;
+                    return _FilterChip(
+                      label: label,
+                      active: active,
+                      color: color,
+                      icon: icon,
+                      isDark: isDark,
+                      onTap: () => onToggle(key),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedOpacity(
+                opacity: overlapsContent ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  height: 0.5,
+                  color: isDark
+                      ? const Color(0xFF424242)
+                      : const Color(0xFFD1D1D6),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -886,7 +972,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
 
 // ── Filter chip ───────────────────────────────────────────────────────────────
 
-class _FilterChip extends StatelessWidget {
+class _FilterChip extends StatefulWidget {
   final String label;
   final bool active;
   final Color color;
@@ -904,46 +990,90 @@ class _FilterChip extends StatelessWidget {
   });
 
   @override
+  State<_FilterChip> createState() => _FilterChipState();
+}
+
+class _FilterChipState extends State<_FilterChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: widget.active ? 1.0 : 0.0,
+    );
+    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void didUpdateWidget(_FilterChip old) {
+    super.didUpdateWidget(old);
+    if (widget.active != old.active) {
+      widget.active ? _ctrl.forward() : _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final inactiveBg = isDark ? const Color(0xFF2C2C2E) : Colors.white;
-    final inactiveBorder = isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E5EA);
-    final contentColor = active ? Colors.white : scheme.onSurfaceVariant;
+    final inactiveBorder = widget.isDark
+        ? const Color(0xFF3A3A3C)
+        : Colors.grey.withValues(alpha: 0.25);
 
     return Tappable(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: active ? color : inactiveBg,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(
-            color: active ? color : inactiveBorder,
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 13, color: active ? Colors.white : color),
-                const SizedBox(width: 5),
-              ],
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 180),
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: contentColor,
-                ),
-                child: Text(label),
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _t,
+        builder: (_, __) {
+          final v = _t.value;
+          final contentColor =
+              Color.lerp(scheme.onSurfaceVariant, Colors.white, v)!;
+          return Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Color.lerp(
+                Colors.transparent,
+                widget.color.withValues(alpha: 0.3),
+                v,
               ),
-            ],
-          ),
-        ),
+              borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
+              border: Border.all(
+                color: Color.lerp(inactiveBorder, widget.color, v)!,
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: 13, color: Color.lerp(widget.color, Colors.white, v)!),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(
+                    widget.label,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: contentColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

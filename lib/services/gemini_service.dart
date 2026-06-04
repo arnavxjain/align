@@ -2,10 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import 'subscription_service.dart';
 
 class GeminiService {
-  static const _endpoint =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  static String _buildEndpoint({bool? usePro}) {
+    final model = (usePro ?? SubscriptionService.instance.isPro.value)
+        ? 'gemini-2.5-pro'
+        : 'gemini-2.5-flash';
+    return 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
+  }
 
   static Future<List<Map<String, dynamic>>?> analyze({
     required String url,
@@ -13,11 +18,11 @@ class GeminiService {
     required String prompt,
     bool useSearch = false,
     String? geminiFileUri,
+    bool? usePro,
   }) async {
     final List<Map<String, dynamic>> parts;
 
     if (geminiFileUri != null) {
-      // Pre-uploaded file (e.g., downloaded Instagram reel)
       parts = [
         {'text': prompt},
         {'fileData': {'mimeType': 'video/mp4', 'fileUri': geminiFileUri}},
@@ -47,20 +52,19 @@ class GeminiService {
     try {
       var response = await http
           .post(
-            Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+            Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 90));
 
-      // 429 rate-limit: Gemini tells us exactly how long to wait — honour it.
       if (response.statusCode == 429) {
         final delay = _parseRetryDelay(response.body);
         debugPrint('Gemini 429 — retrying in ${delay}s');
         await Future.delayed(Duration(seconds: delay + 1));
         response = await http
             .post(
-              Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+              Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(body),
             )
@@ -196,6 +200,39 @@ class GeminiService {
     return url; // return original if parsing fails
   }
 
+  static Future<List<Map<String, dynamic>>> extractCountries({
+    required String url,
+    required bool isYouTube,
+    String? geminiFileUri,
+    bool? usePro,
+  }) async {
+    final result = await analyze(
+      url: url,
+      isYouTube: isYouTube,
+      geminiFileUri: geminiFileUri,
+      usePro: usePro,
+      prompt:
+          'Identify ALL countries that have any meaningful connection to this content. '
+          'Include countries where: events or news takes place, people mentioned were born or are from, '
+          'brands or products shown originate from, companies are headquartered, locations are filmed or set in, '
+          'cultural references originate from, sports teams or athletes are from, or any other meaningful '
+          'geographic connection exists. Be thorough and inclusive — if there is any reasonable connection '
+          'to a country include it. Return ONLY a JSON array of objects with keys "code" (ISO 3166-1 alpha-2 '
+          'uppercase) and "reason" (max 15 words explaining the specific connection). '
+          'Example: [{"code":"US","reason":"Jensen Huang is American, NVIDIA headquartered in US"},'
+          '{"code":"CN","reason":"China GPU export restrictions central to content"}]. '
+          'Return [] only if there is truly no geographic connection whatsoever.',
+    );
+    if (result == null) return [];
+    return result
+        .where((e) => e['code'] is String && (e['code'] as String).trim().length == 2)
+        .map((e) => <String, dynamic>{
+              'code': (e['code'] as String).trim().toUpperCase(),
+              'reason': ((e['reason'] as String?) ?? '').trim(),
+            })
+        .toList();
+  }
+
   static int _parseRetryDelay(String body) {
     try {
       final match = RegExp(r'retry in ([\d.]+)s').firstMatch(body);
@@ -207,6 +244,7 @@ class GeminiService {
   static Future<String?> chat({
     required String systemContext,
     required List<Map<String, dynamic>> history,
+    bool? usePro,
   }) async {
     final contents = <Map<String, dynamic>>[];
     for (int i = 0; i < history.length; i++) {
@@ -234,7 +272,7 @@ class GeminiService {
     try {
       var response = await http
           .post(
-            Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+            Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
@@ -246,7 +284,7 @@ class GeminiService {
         await Future.delayed(Duration(seconds: delay + 1));
         response = await http
             .post(
-              Uri.parse('$_endpoint?key=${AppConfig.geminiApiKey}'),
+              Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(body),
             )

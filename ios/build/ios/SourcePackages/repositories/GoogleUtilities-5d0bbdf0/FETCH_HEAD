@@ -1,0 +1,282 @@
+0010b5df19fca4c9d2933a823a2ba36e9caf3bce	not-for-merge	branch 'ah/arch-test' of https://github.com/google/GoogleUtilities
+54b221e66eb974a5a346e01eca1e6ef614e4f4bc	not-for-merge	branch 'app-delegate-main' of https://github.com/google/GoogleUtilities
+68e2244a422a19308b85b92320f45f3bd92973c0	not-for-merge	branch 'char-extra-delegate' of https://github.com/google/GoogleUtilities
+9d1e1af49ac92b9f14eecb86f205a96ba4249d25	not-for-merge	branch 'char-multicast-feature' of https://github.com/google/GoogleUtilities
+c46e5f8b7c23265f17c24ca7f9fa1b13ded7a822	not-for-merge	branch 'main' of https://github.com/google/GoogleUtilities
+adf3c7b801ee61d8e85307a4d8a14c5cb2ede146	not-for-merge	branch 'mm/app-delegate' of https://github.com/google/GoogleUtilities
+f0487b6cc6ad4e0a60f80cd8e849643ba45f12d7	not-for-merge	branch 'mm/app-delegate-proxy' of https://github.com/google/GoogleUtilities
+6fd24d9da5fcc45e4bc22844b894288de608385e	not-for-merge	branch 'mm/app-delegate-sample' of https://github.com/google/GoogleUtilities
+6050e2ac8f34e5be90ce5e2f73fdcd7971adf32c	not-for-merge	branch 'mm/signposts' of https://github.com/google/GoogleUtilities
+470964c3ae8af00037417c451f559886eba9efd2	not-for-merge	branch 'nc/flaky-tests-2' of https://github.com/google/GoogleUtilities
+6e232a67ad0aafe98ebc2635c4f1f48c36767c89	not-for-merge	branch 'nc/test-fix' of https://github.com/google/GoogleUtilities
+83fa5a9837564b8dae1e63d0d4384e35908d3233	not-for-merge	branch 'release-8.0' of https://github.com/google/GoogleUtilities
+fb2f7502468c47509ead13f68d4ac86bd14024cd	not-for-merge	branch 'rw-cpp-workaround' of https://github.com/google/GoogleUtilities
+1386568954459640f032f5baf65fc914a388ce76	not-for-merge	'refs/pull/1/head' of https://github.com/google/GoogleUtilities
+cfb98117c03cfe72d715f311afb0fe187492faaf	not-for-merge	'refs/pull/10/head' of https://github.com/google/GoogleUtilities
+823a7a3953f5b0bf569821f9108dee86405ba831	not-for-merge	'refs/pull/101/head' of https://github.com/google/GoogleUtilities
+dbb7a0611dec9d4037b78fed61c6a962c14cd5c0	not-for-merge	'refs/pull/103/head' of https://github.com/google/GoogleUtilities
+2ed4bf50ed326db12876f3262320e7327d406b84	not-for-merge	'refs/pull/104/head' of https://github.com/google/GoogleUtilities
+6929e8bb28c8d1cfff32ae981ad741cbe9866916	not-for-merge	'refs/pull/106/head' of https://github.com/google/GoogleUtilities
+ef0fbfbcf6a798f9516556be1b91059c0ec5c7f6	not-for-merge	'refs/pull/108/head' of https://github.com/google/GoogleUtilities
+8acabe38e18a26b33cd6eeaff8304ffb45f667a6	not-for-merge	'refs/pull/11/head' of https://github.com/google/GoogleUtilities
+0010b5df19fca4c9d2933a823a2ba36e9caf3bce	not-for-merge	'refs/pull/110/head' of https://github.com/google/GoogleUtilities
+79b059be1218cbcd5f877796185c3049e69260c0	not-for-merge	'refs/pull/110/merge' of https://github.com/google/GoogleUtilities
+abfb57791f82b9736f67f17b7ac5a41722185f4c	not-for-merge	'refs/pull/111/head' of https://github.com/google/GoogleUtilities
+ce15bacfe54639dce12c118834c8870623632b9f	not-for-merge	'refs/pull/112/head' of https://github.com/google/GoogleUtilities
+64a79567eadf70c7462dad60ffca7fb24238944f	not-for-merge	'refs/pull/113/head' of https://github.com/google/GoogleUtilities
+72931b6bc2a07d7fa6557555916e29d6bee8191b	not-for-merge	'refs/pull/114/head' of https://github.com/google/GoogleUtilities
+f8713ab4b9c54f95e62cc3467f3af8f2215b0273	not-for-merge	'refs/pull/115/head' of https://github.com/google/GoogleUtilities
+275d7f587820c470aa6db03112e747cb4374c150	not-for-merge	'refs/pull/116/head' of https://github.com/google/GoogleUtilities
+4bc847b5249e75bb6387b168f61dcb6fe3293ec7	not-for-merge	'refs/pull/117/head' of https://github.com/google/GoogleUtilities
+9419f312324a3b666905dee5015eb27cf6bbb1e2	not-for-merge	'refs/pull/118/head' of https://github.com/google/GoogleUtilities
+637ac86fa0f5e50817f196a19a623b336e970e1e	not-for-merge	'refs/pull/119/head' of https://github.com/google/GoogleUtilities
+3c83ab7e9e6730814ea9bef0b1200484286a6d34	not-for-merge	'refs/pull/12/head' of https://github.com/google/GoogleUtilities
+470964c3ae8af00037417c451f559886eba9efd2	not-for-merge	'refs/pull/120/head' of https://github.com/google/GoogleUtilities
+22c8a81bdc03ee2b3f6e2b85a15761a085c1d2c1	not-for-merge	'refs/pull/121/head' of https://github.com/google/GoogleUtilities
+181b66b0aef30759f0a68c9b0080d1baf610054e	not-for-merge	'refs/pull/122/head' of https://github.com/google/GoogleUtilities
+ade625315b8f199a413028daa307b654915e488d	not-for-merge	'refs/pull/123/head' of https://github.com/google/GoogleUtilities
+452b5252d42b907cf4bd3b4134209fb9a11954be	not-for-merge	'refs/pull/124/head' of https://github.com/google/GoogleUtilities
+8abf35a0b073d571e625f91ca380185ba3e98eb3	not-for-merge	'refs/pull/125/head' of https://github.com/google/GoogleUtilities
+6428e48c156b2843fa39a34adb2c7a766a561dbc	not-for-merge	'refs/pull/126/head' of https://github.com/google/GoogleUtilities
+4aff963e31ea990c38f73947acd3366a13437194	not-for-merge	'refs/pull/127/head' of https://github.com/google/GoogleUtilities
+d27a048b5aaf1ce4f678d45a216ad9653f75bf31	not-for-merge	'refs/pull/129/head' of https://github.com/google/GoogleUtilities
+4b19fc1de3752bb4e1e274f1394bacc771af529f	not-for-merge	'refs/pull/13/head' of https://github.com/google/GoogleUtilities
+93df502ff050824962be2a876965818f537741ef	not-for-merge	'refs/pull/131/head' of https://github.com/google/GoogleUtilities
+403a4e9581f19d94e9b49310f3584ad5f6fe9ed5	not-for-merge	'refs/pull/132/head' of https://github.com/google/GoogleUtilities
+5cb8976e75f4dec55270ac1a7faa9de5e1967c72	not-for-merge	'refs/pull/133/head' of https://github.com/google/GoogleUtilities
+2c4c899ee2e7d2d84ddea3ed3f2a702a9098fa9e	not-for-merge	'refs/pull/134/head' of https://github.com/google/GoogleUtilities
+77e96d551598849fcad9c21a848c1731908acea4	not-for-merge	'refs/pull/135/head' of https://github.com/google/GoogleUtilities
+35e36e37a752c7765ef57fb8e92b5afad3b4a667	not-for-merge	'refs/pull/136/head' of https://github.com/google/GoogleUtilities
+745134a29b3e500bd03fd6be709d4fe9f32b52b4	not-for-merge	'refs/pull/137/head' of https://github.com/google/GoogleUtilities
+4f656378733964e7384c6d0c367679fb0c244b27	not-for-merge	'refs/pull/138/head' of https://github.com/google/GoogleUtilities
+cfda4b3c16a9e7c455b46917e834ea2b617ea92a	not-for-merge	'refs/pull/139/head' of https://github.com/google/GoogleUtilities
+a82ee89cafa7a4ec1a3d8632158db21dc65b7f47	not-for-merge	'refs/pull/141/head' of https://github.com/google/GoogleUtilities
+0f9d9971751070495e10e3da32ade3901096a9fe	not-for-merge	'refs/pull/142/head' of https://github.com/google/GoogleUtilities
+efd4098e614a11ae942935947e50e8157b8c66c3	not-for-merge	'refs/pull/143/head' of https://github.com/google/GoogleUtilities
+e6fb1776aee44d8b1b257ae0868f0100f3b3b902	not-for-merge	'refs/pull/144/head' of https://github.com/google/GoogleUtilities
+6fa207b06ab8e0ce5ecb1988c5d44b855e8ebcbd	not-for-merge	'refs/pull/145/head' of https://github.com/google/GoogleUtilities
+3fd02fbfce593b5587774b8fe39856387d3c5db5	not-for-merge	'refs/pull/147/head' of https://github.com/google/GoogleUtilities
+6e1a2196ea41b1c72f0d3825730b6e57b4e5fb49	not-for-merge	'refs/pull/148/head' of https://github.com/google/GoogleUtilities
+3cd0bca4aae435bbb847514217558ab87f0ac819	not-for-merge	'refs/pull/149/head' of https://github.com/google/GoogleUtilities
+6544915238b4bc752ac6d9c8fe94d1a082f2ccf1	not-for-merge	'refs/pull/151/head' of https://github.com/google/GoogleUtilities
+ecb52a23729b2140696744739bba8509a671ed36	not-for-merge	'refs/pull/154/head' of https://github.com/google/GoogleUtilities
+b521c4996d1f55cb8114a0d6fad5f98d96f0b829	not-for-merge	'refs/pull/155/head' of https://github.com/google/GoogleUtilities
+a290d1d9581f147efc820e4fed41453ea2b4eb14	not-for-merge	'refs/pull/156/head' of https://github.com/google/GoogleUtilities
+31f14f77c01eee5a275117fac015505eb8d88741	not-for-merge	'refs/pull/157/head' of https://github.com/google/GoogleUtilities
+8cacd7a244500976ed7d771ffb31a949f11e684e	not-for-merge	'refs/pull/158/head' of https://github.com/google/GoogleUtilities
+22939eb5428909f3bbb64b31acf27639a6f1b2c4	not-for-merge	'refs/pull/159/head' of https://github.com/google/GoogleUtilities
+e22a056e57013579e34ebe0e0f2937cc9a56fa4c	not-for-merge	'refs/pull/16/head' of https://github.com/google/GoogleUtilities
+d52a4dc8ef8d420a26f311813cc14f3f54dfc92c	not-for-merge	'refs/pull/161/head' of https://github.com/google/GoogleUtilities
+c13c12b1ebdd15fc0dbb39afa68e047597f0e4e7	not-for-merge	'refs/pull/162/head' of https://github.com/google/GoogleUtilities
+93e6e8a14fdf94404da7e469d5c008d66ab92cc7	not-for-merge	'refs/pull/163/head' of https://github.com/google/GoogleUtilities
+7fa5e4c788082f36f8bf67856c29ca2f606f20eb	not-for-merge	'refs/pull/164/head' of https://github.com/google/GoogleUtilities
+5f560ce1b11fdf0f1fe2326d396eb1285348f7cc	not-for-merge	'refs/pull/165/head' of https://github.com/google/GoogleUtilities
+d1f2483253ce5ca286b88bf1be8035c9cedbdbcd	not-for-merge	'refs/pull/166/head' of https://github.com/google/GoogleUtilities
+d1e7753c542d9f185f4e2d713dc59d2f046b778b	not-for-merge	'refs/pull/167/head' of https://github.com/google/GoogleUtilities
+f1981515ccfc151d7b73d7aaa2e4a690507bb843	not-for-merge	'refs/pull/168/head' of https://github.com/google/GoogleUtilities
+733f4e47f54fba080be67ca02f3441a91bedc9e5	not-for-merge	'refs/pull/169/head' of https://github.com/google/GoogleUtilities
+77ac569703e65ecdce2ca21f04b35ac608d4fb37	not-for-merge	'refs/pull/17/head' of https://github.com/google/GoogleUtilities
+b9db3db7f2edb9165d60153aadf26ccb7c8dff9b	not-for-merge	'refs/pull/171/head' of https://github.com/google/GoogleUtilities
+a19b9af8235e9e61621d1df429bf9ae03c8b02dd	not-for-merge	'refs/pull/172/head' of https://github.com/google/GoogleUtilities
+80bea6d49ce8badcb38908b2ee7886203fc28213	not-for-merge	'refs/pull/174/head' of https://github.com/google/GoogleUtilities
+67529f145f2fada948c6d0a3e989ea4746d3c161	not-for-merge	'refs/pull/177/head' of https://github.com/google/GoogleUtilities
+2267528490248222bc33c95ccb4e5dce8215e984	not-for-merge	'refs/pull/178/head' of https://github.com/google/GoogleUtilities
+5116388c0f6e95359cb06fadb60fabd0af6abac7	not-for-merge	'refs/pull/179/head' of https://github.com/google/GoogleUtilities
+39c83588716014137ff9cbfc694b3711210c20d0	not-for-merge	'refs/pull/180/head' of https://github.com/google/GoogleUtilities
+41e177029a20f096e07954f3fdb131820f7a23d2	not-for-merge	'refs/pull/181/head' of https://github.com/google/GoogleUtilities
+6f178320cbf896149dc49af495f2c75422d9ce1d	not-for-merge	'refs/pull/182/head' of https://github.com/google/GoogleUtilities
+afb5424d6210eda9d4b8898e789db90754891472	not-for-merge	'refs/pull/183/head' of https://github.com/google/GoogleUtilities
+b5d93eb488f513d7b6bc5fca6b9f17209fd1cd1d	not-for-merge	'refs/pull/184/head' of https://github.com/google/GoogleUtilities
+5a85c05624a58c091f6e9167ef1fdf183977ddd9	not-for-merge	'refs/pull/185/head' of https://github.com/google/GoogleUtilities
+64bc75487e62de619b6a28f58c19e66ed8763816	not-for-merge	'refs/pull/186/head' of https://github.com/google/GoogleUtilities
+b5c37c565f76d2a98d27be682536658b509e40d8	not-for-merge	'refs/pull/187/head' of https://github.com/google/GoogleUtilities
+97096bf51bbd609991d4f098ebd466157fbd41bf	not-for-merge	'refs/pull/188/head' of https://github.com/google/GoogleUtilities
+4cae86aae43aaa812474474dc46233c1ce29a955	not-for-merge	'refs/pull/189/head' of https://github.com/google/GoogleUtilities
+8f9f60deb7e10514a61f47a51d7d9e723c5dd927	not-for-merge	'refs/pull/19/head' of https://github.com/google/GoogleUtilities
+c10200abfa4a9646cc7fc8b8476377173ebfd0c9	not-for-merge	'refs/pull/190/head' of https://github.com/google/GoogleUtilities
+ed612a53bc2d0c76e12f764e67bdbd0cfd7f5326	not-for-merge	'refs/pull/192/head' of https://github.com/google/GoogleUtilities
+754cedf8ca23618fadd7df9864605164e081ce27	not-for-merge	'refs/pull/193/head' of https://github.com/google/GoogleUtilities
+978b377d0ee46695f822d723b68047502ddd292a	not-for-merge	'refs/pull/194/head' of https://github.com/google/GoogleUtilities
+3826cfa2a18420c62cbf0104a032299485a5e4c2	not-for-merge	'refs/pull/195/head' of https://github.com/google/GoogleUtilities
+dcf9468ff3c776cc75a2e4e3889bffc181661e36	not-for-merge	'refs/pull/196/head' of https://github.com/google/GoogleUtilities
+8a3bee7f70bade4065662345ccb74b031c398eb3	not-for-merge	'refs/pull/197/head' of https://github.com/google/GoogleUtilities
+da775b3a60a1c72f33ce70ce427e952df065bb2c	not-for-merge	'refs/pull/198/head' of https://github.com/google/GoogleUtilities
+a50a72349ee49eff7d822a3bdf6a3fa9f974aa0c	not-for-merge	'refs/pull/199/head' of https://github.com/google/GoogleUtilities
+2fe8c3d447d1225a4260da8444208235c6582885	not-for-merge	'refs/pull/2/head' of https://github.com/google/GoogleUtilities
+5ea946c963d4f8dea5a9cd60ea08cc6ca2a04ecb	not-for-merge	'refs/pull/20/head' of https://github.com/google/GoogleUtilities
+c80b33d368406c9fb237cebcb4d0c68f8e67360d	not-for-merge	'refs/pull/200/head' of https://github.com/google/GoogleUtilities
+b8ecdc1e65d86337e1b7e55e1348a9d87428b614	not-for-merge	'refs/pull/201/head' of https://github.com/google/GoogleUtilities
+9ea9243ae63a5a189b6074b88a162d9ce1965507	not-for-merge	'refs/pull/202/head' of https://github.com/google/GoogleUtilities
+d0942b69cd86e900dee4a3c214a13277018f5807	not-for-merge	'refs/pull/203/head' of https://github.com/google/GoogleUtilities
+8caf2fa9a4a2b66fdb6d3402a0b7491368561766	not-for-merge	'refs/pull/204/head' of https://github.com/google/GoogleUtilities
+935f513d931e3ce4c6405decb33eb049eb0fed45	not-for-merge	'refs/pull/205/head' of https://github.com/google/GoogleUtilities
+7ef24aba28a8866155f3e07fe4b82d24ee88b622	not-for-merge	'refs/pull/206/head' of https://github.com/google/GoogleUtilities
+12ee963dbdbbc13be637afdfa6e5451163294202	not-for-merge	'refs/pull/207/head' of https://github.com/google/GoogleUtilities
+aef634fc1c8bff560a865764810c21955a153d64	not-for-merge	'refs/pull/208/head' of https://github.com/google/GoogleUtilities
+19d6451439fde463e7065f8d07510e559e89a074	not-for-merge	'refs/pull/209/head' of https://github.com/google/GoogleUtilities
+7d8531d03289ac2cba8f3ab0d9643623bb8e428c	not-for-merge	'refs/pull/21/head' of https://github.com/google/GoogleUtilities
+716f4f585404872a7ed95c8f2e3059cf4342fe97	not-for-merge	'refs/pull/210/head' of https://github.com/google/GoogleUtilities
+aa4f244e2b68a922e1ecd89ee83280fa288efb1b	not-for-merge	'refs/pull/211/head' of https://github.com/google/GoogleUtilities
+28a9ed50ef6c397dee96c89d4a37c756bddbec81	not-for-merge	'refs/pull/213/head' of https://github.com/google/GoogleUtilities
+62bb8dea24ddd55c1aa5e88b640e4dc345252827	not-for-merge	'refs/pull/214/head' of https://github.com/google/GoogleUtilities
+e13b8faf3890fa0a4dcf005065551cae29ac4890	not-for-merge	'refs/pull/215/head' of https://github.com/google/GoogleUtilities
+e9fec2464f8f206ec4ee0e04404394cd4a1b150b	not-for-merge	'refs/pull/218/head' of https://github.com/google/GoogleUtilities
+c065d0a720353c27ae6b03f855ebac894e9bd241	not-for-merge	'refs/pull/219/head' of https://github.com/google/GoogleUtilities
+2c2edfcac26b4ed072d8cee95d5b40d78f89f90b	not-for-merge	'refs/pull/22/head' of https://github.com/google/GoogleUtilities
+27cedee6f29e8b27121b3389ab110fd0ce88c41f	not-for-merge	'refs/pull/220/head' of https://github.com/google/GoogleUtilities
+c54e1752b4dc604828800a6cbe6b4e7760778228	not-for-merge	'refs/pull/221/head' of https://github.com/google/GoogleUtilities
+b19b3e41101704da7145f5322146ce957e39f8f9	not-for-merge	'refs/pull/222/head' of https://github.com/google/GoogleUtilities
+6d2610f52fd9d615ee49f2826c6bf04f467fbc54	not-for-merge	'refs/pull/223/head' of https://github.com/google/GoogleUtilities
+0d28092ef4da4004db074ef9b8f48bda9bf4848c	not-for-merge	'refs/pull/224/head' of https://github.com/google/GoogleUtilities
+7266e936921881c7e7c34cfe4df7c1d96d97ab09	not-for-merge	'refs/pull/225/head' of https://github.com/google/GoogleUtilities
+7df2314945870406847e5a8a641f039ca2e14372	not-for-merge	'refs/pull/226/head' of https://github.com/google/GoogleUtilities
+abf165d321f96f6f83b38b5bd8ac990400938bd9	not-for-merge	'refs/pull/227/head' of https://github.com/google/GoogleUtilities
+a3b437a1069c01109b45c759a07f2456f13598e9	not-for-merge	'refs/pull/229/head' of https://github.com/google/GoogleUtilities
+51d36b52733e40808fb1855d18aaa852f7f75b20	not-for-merge	'refs/pull/23/head' of https://github.com/google/GoogleUtilities
+3ba4773377931cc410c37c06ac326658ea853bdf	not-for-merge	'refs/pull/230/head' of https://github.com/google/GoogleUtilities
+1affe404166a0ff9616442954f958eb4c2125268	not-for-merge	'refs/pull/231/head' of https://github.com/google/GoogleUtilities
+6e232a67ad0aafe98ebc2635c4f1f48c36767c89	not-for-merge	'refs/pull/232/head' of https://github.com/google/GoogleUtilities
+71457371424f88140f777f4824b8cbc1e9c8031c	not-for-merge	'refs/pull/232/merge' of https://github.com/google/GoogleUtilities
+200f988d182929ddbab22a5cdc2959a94f4c5361	not-for-merge	'refs/pull/24/head' of https://github.com/google/GoogleUtilities
+702ee6960e10654e75efd9de4e3e9a11ffb9c793	not-for-merge	'refs/pull/25/head' of https://github.com/google/GoogleUtilities
+cae56f33bf1db2a0e88e8f76b7ece1f5cae61d04	not-for-merge	'refs/pull/26/head' of https://github.com/google/GoogleUtilities
+21adad446c330962413d3bd7e405d6b6b4124347	not-for-merge	'refs/pull/27/head' of https://github.com/google/GoogleUtilities
+dc76e7ae59a76cd41ae208c7654b63717f69755d	not-for-merge	'refs/pull/28/head' of https://github.com/google/GoogleUtilities
+bbd4173f76fac863ca4b5fb596b62488cbaeb549	not-for-merge	'refs/pull/29/head' of https://github.com/google/GoogleUtilities
+d5d02d94e846cf6a90f41e354ae73b286dd5ae8b	not-for-merge	'refs/pull/3/head' of https://github.com/google/GoogleUtilities
+0d9334720f254e85ccc71f7bbaff02a75422c573	not-for-merge	'refs/pull/30/head' of https://github.com/google/GoogleUtilities
+246a4f343dcfb73665e973fa3b52b91aa80b796d	not-for-merge	'refs/pull/31/head' of https://github.com/google/GoogleUtilities
+3db3683734f530955f4d7612650c561f698a22c1	not-for-merge	'refs/pull/32/head' of https://github.com/google/GoogleUtilities
+71116071103f4ba62ae383fb98222204259ad778	not-for-merge	'refs/pull/33/head' of https://github.com/google/GoogleUtilities
+3b75e302bc19b8d711a9ae8f24598160037c4829	not-for-merge	'refs/pull/34/head' of https://github.com/google/GoogleUtilities
+7ac11bd2e0c695721f48ca53b1f693303b61ea6e	not-for-merge	'refs/pull/35/head' of https://github.com/google/GoogleUtilities
+b4733d2dcd1d34cdd7f1bea26f1e57967225ca13	not-for-merge	'refs/pull/37/head' of https://github.com/google/GoogleUtilities
+0975555a4918abf45a53db2b0436896a3fa33d36	not-for-merge	'refs/pull/38/head' of https://github.com/google/GoogleUtilities
+b9abca7b814e9bb85fae04b48288c42ec1fb5539	not-for-merge	'refs/pull/39/head' of https://github.com/google/GoogleUtilities
+c377cc2d8793b9c1f2d196c4b9f6a677725cd986	not-for-merge	'refs/pull/4/head' of https://github.com/google/GoogleUtilities
+9aece6b963f24bb2c36c954594de8f1e6a911f0f	not-for-merge	'refs/pull/41/head' of https://github.com/google/GoogleUtilities
+eabbca184ec8c32b517720d84ce158e627981d82	not-for-merge	'refs/pull/42/head' of https://github.com/google/GoogleUtilities
+9d78a684a279a0fa5efaad419e4ca1da1817eb15	not-for-merge	'refs/pull/43/head' of https://github.com/google/GoogleUtilities
+dba7a82a68fef9c2f3910497379b1683cad8e610	not-for-merge	'refs/pull/44/head' of https://github.com/google/GoogleUtilities
+57d49e96328f60a06e369293aa3c82bbb1f50f37	not-for-merge	'refs/pull/45/head' of https://github.com/google/GoogleUtilities
+2c7681252e983d14a944d183a10adc7068108506	not-for-merge	'refs/pull/46/head' of https://github.com/google/GoogleUtilities
+c7400969c32dc5e606fbaddfebe54a9ac573b44b	not-for-merge	'refs/pull/47/head' of https://github.com/google/GoogleUtilities
+6050e2ac8f34e5be90ce5e2f73fdcd7971adf32c	not-for-merge	'refs/pull/48/head' of https://github.com/google/GoogleUtilities
+1c43531d30ee7ccfbd1792ab58751e9a853d953c	not-for-merge	'refs/pull/48/merge' of https://github.com/google/GoogleUtilities
+7447fcc0d96679768065db8e59553748bb726480	not-for-merge	'refs/pull/49/head' of https://github.com/google/GoogleUtilities
+258c5d4dfa349a2927ed7a54bb7196c0c740c8ab	not-for-merge	'refs/pull/5/head' of https://github.com/google/GoogleUtilities
+6fd24d9da5fcc45e4bc22844b894288de608385e	not-for-merge	'refs/pull/50/head' of https://github.com/google/GoogleUtilities
+66c30edcdf0663e545cd863691f36ff69e755d4e	not-for-merge	'refs/pull/50/merge' of https://github.com/google/GoogleUtilities
+8f55e12fbcdecd1372f7896da17c5e07818eda91	not-for-merge	'refs/pull/51/head' of https://github.com/google/GoogleUtilities
+2fba886307042c4f869b250983a5567452624b76	not-for-merge	'refs/pull/52/head' of https://github.com/google/GoogleUtilities
+5138d329c7322e6c6db1d553b00f4138e3527c37	not-for-merge	'refs/pull/53/head' of https://github.com/google/GoogleUtilities
+91a67952d97f8854e82bbd1fa57f99c07ed7dbd8	not-for-merge	'refs/pull/54/head' of https://github.com/google/GoogleUtilities
+2080839f3a5104a6ca65e9949d81f503565d507c	not-for-merge	'refs/pull/55/head' of https://github.com/google/GoogleUtilities
+3a5ffbbfb51085758b7b5fb56078cecebbc142e6	not-for-merge	'refs/pull/56/head' of https://github.com/google/GoogleUtilities
+48df532b10ee74c8f7e2d9a4c007605bfe6e39f3	not-for-merge	'refs/pull/57/head' of https://github.com/google/GoogleUtilities
+63a4c08ca69dfbdeba2bba451f63b4b0f8e14cf9	not-for-merge	'refs/pull/58/head' of https://github.com/google/GoogleUtilities
+3a8d06f15542abac9ecef3d1251bd96fc4730f51	not-for-merge	'refs/pull/59/head' of https://github.com/google/GoogleUtilities
+adf3c7b801ee61d8e85307a4d8a14c5cb2ede146	not-for-merge	'refs/pull/6/head' of https://github.com/google/GoogleUtilities
+3d32227a7d993aad6908f9d2196e5f9e58d1be09	not-for-merge	'refs/pull/60/head' of https://github.com/google/GoogleUtilities
+0d77cd09d94fd50befd7c272360bd57315880462	not-for-merge	'refs/pull/61/head' of https://github.com/google/GoogleUtilities
+0571423ea1e7a244380fa10333c145faee76b9d7	not-for-merge	'refs/pull/62/head' of https://github.com/google/GoogleUtilities
+4408228b79cc19269680cf41ea67cb1dd34e104b	not-for-merge	'refs/pull/64/head' of https://github.com/google/GoogleUtilities
+f6fa5141fcf79a29dc6f0ffc2b80ebd31c024382	not-for-merge	'refs/pull/65/head' of https://github.com/google/GoogleUtilities
+0637cfa01e0569bab91afa16aec3312f56452197	not-for-merge	'refs/pull/66/head' of https://github.com/google/GoogleUtilities
+bafc9689db4bfb7484e1789bb454332e28c1e530	not-for-merge	'refs/pull/67/head' of https://github.com/google/GoogleUtilities
+1158a7d2eb01234aaeeac84fc3c1656b93d7e831	not-for-merge	'refs/pull/68/head' of https://github.com/google/GoogleUtilities
+fb2f7502468c47509ead13f68d4ac86bd14024cd	not-for-merge	'refs/pull/69/head' of https://github.com/google/GoogleUtilities
+2b5f63e197bf3bd7f96045f95391440cdb4ca15f	not-for-merge	'refs/pull/69/merge' of https://github.com/google/GoogleUtilities
+25ac7f90f25414c143c959042fca9a919ff6340d	not-for-merge	'refs/pull/7/head' of https://github.com/google/GoogleUtilities
+4b89cd22c0a1915b019acf1bf74c683bece2da35	not-for-merge	'refs/pull/70/head' of https://github.com/google/GoogleUtilities
+68e2244a422a19308b85b92320f45f3bd92973c0	not-for-merge	'refs/pull/71/head' of https://github.com/google/GoogleUtilities
+db0b95343e933ff4fa1248b0dc2b1eb76a7526a3	not-for-merge	'refs/pull/71/merge' of https://github.com/google/GoogleUtilities
+8a017304f18ecb3f374a095cd01ca352434def75	not-for-merge	'refs/pull/73/head' of https://github.com/google/GoogleUtilities
+544a8e7078cb3cbe85246bfc4ce71c79d759e88a	not-for-merge	'refs/pull/74/head' of https://github.com/google/GoogleUtilities
+88d15162749ff5ee9656d0e9f2ccea3d8e987743	not-for-merge	'refs/pull/75/head' of https://github.com/google/GoogleUtilities
+18605b4bcc13f0aa5b1e9ced0ecb4a0cf8244801	not-for-merge	'refs/pull/76/head' of https://github.com/google/GoogleUtilities
+58be640e8f4aad7bae32b239eb6dd7e241a5282a	not-for-merge	'refs/pull/77/head' of https://github.com/google/GoogleUtilities
+7f75a96b2c334ba07a22ddc506e1dd4027e95b74	not-for-merge	'refs/pull/78/head' of https://github.com/google/GoogleUtilities
+243196a183c72c3212fc5bcc1122b03d66e08f7a	not-for-merge	'refs/pull/79/head' of https://github.com/google/GoogleUtilities
+9e5d7305f01a348a360298820c7064c80b648910	not-for-merge	'refs/pull/8/head' of https://github.com/google/GoogleUtilities
+ce912dea515ad3745328bb485419c8b56f8f3673	not-for-merge	'refs/pull/80/head' of https://github.com/google/GoogleUtilities
+427511761c92500456bb4b191a0877f993d31972	not-for-merge	'refs/pull/81/head' of https://github.com/google/GoogleUtilities
+23360b74c592eb7686dd3da2009ec946b833aacf	not-for-merge	'refs/pull/82/head' of https://github.com/google/GoogleUtilities
+01ee49264075763a0222fac74c8c83b3706c89d8	not-for-merge	'refs/pull/83/head' of https://github.com/google/GoogleUtilities
+fc6fde7c1050200acf2f36e8fe4c14c355804822	not-for-merge	'refs/pull/84/head' of https://github.com/google/GoogleUtilities
+809709769c601ead8526c21b9d6ff62d95cb818c	not-for-merge	'refs/pull/87/head' of https://github.com/google/GoogleUtilities
+357df13808bb4255d17b740ad688c3bdfcba1b81	not-for-merge	'refs/pull/88/head' of https://github.com/google/GoogleUtilities
+247196ef7c0d6c9eed54896f2a6110c841548813	not-for-merge	'refs/pull/89/head' of https://github.com/google/GoogleUtilities
+98632d7496119ab644a3fee9029f911c3bb4687b	not-for-merge	'refs/pull/9/head' of https://github.com/google/GoogleUtilities
+30e27040b5e4a2c058174d0fbeb625bc40b87463	not-for-merge	'refs/pull/90/head' of https://github.com/google/GoogleUtilities
+94012265bd31800672e75087b98b80a0ecfc01ea	not-for-merge	'refs/pull/91/head' of https://github.com/google/GoogleUtilities
+f9f0507972810bd10699c0e07725277101e3b410	not-for-merge	'refs/pull/92/head' of https://github.com/google/GoogleUtilities
+12214c87274e8ab76b1ac1f7cac388b1f164513e	not-for-merge	'refs/pull/93/head' of https://github.com/google/GoogleUtilities
+d6d552dd02f9a109baa726fec8d67c5975bc3290	not-for-merge	'refs/pull/94/head' of https://github.com/google/GoogleUtilities
+49f51eef329fd5e0ff88978bc312009918b1ca12	not-for-merge	'refs/pull/95/head' of https://github.com/google/GoogleUtilities
+77443a3f5f39b86f3676245d4ef7046086035a8c	not-for-merge	'refs/pull/96/head' of https://github.com/google/GoogleUtilities
+8bda8d82ae4c2f4a39266df85984d4acf6bac4a6	not-for-merge	'refs/pull/98/head' of https://github.com/google/GoogleUtilities
+f0ded6c605c485167b726b9f351d78e4e8f5b5ae	not-for-merge	'refs/pull/99/head' of https://github.com/google/GoogleUtilities
+6db6edb48bdd9943426562c7f042a5492de5ba3d	not-for-merge	tag '7.10.0' of https://github.com/google/GoogleUtilities
+0543562f85620b5b7c510c6bcbef75b562a5127b	not-for-merge	tag '7.11.0' of https://github.com/google/GoogleUtilities
+871d43135925cde39ef7421d8723ce47edfdcc39	not-for-merge	tag '7.11.1' of https://github.com/google/GoogleUtilities
+6039a55afc03aac62e898aea4acdbe20d383978c	not-for-merge	tag '7.11.2' of https://github.com/google/GoogleUtilities
+58d03d22beae762eaddbd30cb5a61af90d4b309f	not-for-merge	tag '7.11.3' of https://github.com/google/GoogleUtilities
+4446686bc3714d49ce043d0f68318f42ed718cb6	not-for-merge	tag '7.11.4' of https://github.com/google/GoogleUtilities
+c38ce365d77b04a9a300c31061c5227589e5597b	not-for-merge	tag '7.11.5' of https://github.com/google/GoogleUtilities
+1cd556b33550982ec17f80e358253d905e756f0f	not-for-merge	tag '7.11.6' of https://github.com/google/GoogleUtilities
+f613cbd59df14b34736932deff01f5bff4fec76e	not-for-merge	tag '7.12.0' of https://github.com/google/GoogleUtilities
+bc27fad73504f3d4af235de451f02ee22586ebd3	not-for-merge	tag '7.12.1' of https://github.com/google/GoogleUtilities
+830ffa9276e10267881f2697283c2fcd867603fd	not-for-merge	tag '7.13.0' of https://github.com/google/GoogleUtilities
+26c898aed8bed13b8a63057ee26500abbbcb8d55	not-for-merge	tag '7.13.1' of https://github.com/google/GoogleUtilities
+5c15c8a27047179087751ee12cdb2c8ae167fbda	not-for-merge	tag '7.13.2' of https://github.com/google/GoogleUtilities
+57a1d307f42df690fdef2637f3e5b776da02aad6	not-for-merge	tag '7.13.3' of https://github.com/google/GoogleUtilities
+7fa255f7b57ac2b79effa56652ed693002d4fb01	not-for-merge	tag '7.2.0' of https://github.com/google/GoogleUtilities
+2de0d0fb0c4bba58137e68a5673b14982d58b77f	not-for-merge	tag '7.2.1' of https://github.com/google/GoogleUtilities
+2c7d33099a3c3da1139bb1e8eb94e46e0dacf075	not-for-merge	tag '7.2.2' of https://github.com/google/GoogleUtilities
+1c47ea135322768023ecdcc9db79bf3df821209f	not-for-merge	tag '7.3.0' of https://github.com/google/GoogleUtilities
+66f5945ac3a4c4ac268bf94c31f226116b14e327	not-for-merge	tag '7.4.0' of https://github.com/google/GoogleUtilities
+58359415d4ea29ebdc8fa5b41ce96c434d76d901	not-for-merge	tag '7.4.1' of https://github.com/google/GoogleUtilities
+5b9fc55628b94740b9666a558570f3a89a626c3d	not-for-merge	tag '7.4.2' of https://github.com/google/GoogleUtilities
+94f9ab80d39da19dd3a2492d5451e909333f0269	not-for-merge	tag '7.4.3' of https://github.com/google/GoogleUtilities
+beb713a16b50a4df3162b3f3ecdeffa16b74b773	not-for-merge	tag '7.5.0' of https://github.com/google/GoogleUtilities
+2e364ff22e952c3bcb202263a9a0d26e46c1b172	not-for-merge	tag '7.5.1' of https://github.com/google/GoogleUtilities
+616fac2626b6b2d1424d79a6f786b4e2ed1cfb49	not-for-merge	tag '7.5.2' of https://github.com/google/GoogleUtilities
+797005ad8a1f0614063933e2fa010a5d13cb09d0	not-for-merge	tag '7.6.0' of https://github.com/google/GoogleUtilities
+b3bb0c5551fb3f80ca939829639ab5b093edd14f	not-for-merge	tag '7.7.0' of https://github.com/google/GoogleUtilities
+f4abe56ce62a779e64b525eb133c8fc2a84bbc1f	not-for-merge	tag '7.7.1' of https://github.com/google/GoogleUtilities
+22907832079d808e82f1182b21af58ef3880666f	not-for-merge	tag '7.8.0' of https://github.com/google/GoogleUtilities
+68ea347bdb1a69e2d2ae2e25cd085b6ef92f64cb	not-for-merge	tag '7.9.0' of https://github.com/google/GoogleUtilities
+6ba4fa9ff372a789befa0c52281a56d3dce3b1fe	not-for-merge	tag '8.0.0' of https://github.com/google/GoogleUtilities
+66dd81c729364b0425d0c2b73e38a489f32b1717	not-for-merge	tag '8.0.1' of https://github.com/google/GoogleUtilities
+53156c7ec267db846e6b64c9f4c4e31ba4cf75eb	not-for-merge	tag '8.0.2' of https://github.com/google/GoogleUtilities
+60da361632d0de02786f709bdc0c4df340f7613e	not-for-merge	tag '8.1.0' of https://github.com/google/GoogleUtilities
+6db6edb48bdd9943426562c7f042a5492de5ba3d	not-for-merge	tag 'CocoaPods-7.10.0' of https://github.com/google/GoogleUtilities
+0543562f85620b5b7c510c6bcbef75b562a5127b	not-for-merge	tag 'CocoaPods-7.11.0' of https://github.com/google/GoogleUtilities
+871d43135925cde39ef7421d8723ce47edfdcc39	not-for-merge	tag 'CocoaPods-7.11.1' of https://github.com/google/GoogleUtilities
+4446686bc3714d49ce043d0f68318f42ed718cb6	not-for-merge	tag 'CocoaPods-7.11.4' of https://github.com/google/GoogleUtilities
+c38ce365d77b04a9a300c31061c5227589e5597b	not-for-merge	tag 'CocoaPods-7.11.5' of https://github.com/google/GoogleUtilities
+1cd556b33550982ec17f80e358253d905e756f0f	not-for-merge	tag 'CocoaPods-7.11.6' of https://github.com/google/GoogleUtilities
+84fd396855f101c151df02859c62ed8ce1e139a3	not-for-merge	tag 'CocoaPods-7.12.0' of https://github.com/google/GoogleUtilities
+830ffa9276e10267881f2697283c2fcd867603fd	not-for-merge	tag 'CocoaPods-7.13.0' of https://github.com/google/GoogleUtilities
+8e5d57ed87057cd7b0e4e8f474d9e78f73eb85f7	not-for-merge	tag 'CocoaPods-7.13.2' of https://github.com/google/GoogleUtilities
+57a1d307f42df690fdef2637f3e5b776da02aad6	not-for-merge	tag 'CocoaPods-7.13.3' of https://github.com/google/GoogleUtilities
+2c7d33099a3c3da1139bb1e8eb94e46e0dacf075	not-for-merge	tag 'CocoaPods-7.2.2' of https://github.com/google/GoogleUtilities
+1c47ea135322768023ecdcc9db79bf3df821209f	not-for-merge	tag 'CocoaPods-7.3.0' of https://github.com/google/GoogleUtilities
+539493bf0c45097dc9b76afba260623301b6bfe6	not-for-merge	tag 'CocoaPods-7.3.1' of https://github.com/google/GoogleUtilities
+66f5945ac3a4c4ac268bf94c31f226116b14e327	not-for-merge	tag 'CocoaPods-7.4.0' of https://github.com/google/GoogleUtilities
+58359415d4ea29ebdc8fa5b41ce96c434d76d901	not-for-merge	tag 'CocoaPods-7.4.1' of https://github.com/google/GoogleUtilities
+94f9ab80d39da19dd3a2492d5451e909333f0269	not-for-merge	tag 'CocoaPods-7.4.3' of https://github.com/google/GoogleUtilities
+beb713a16b50a4df3162b3f3ecdeffa16b74b773	not-for-merge	tag 'CocoaPods-7.5.0' of https://github.com/google/GoogleUtilities
+2e364ff22e952c3bcb202263a9a0d26e46c1b172	not-for-merge	tag 'CocoaPods-7.5.1' of https://github.com/google/GoogleUtilities
+616fac2626b6b2d1424d79a6f786b4e2ed1cfb49	not-for-merge	tag 'CocoaPods-7.5.2' of https://github.com/google/GoogleUtilities
+797005ad8a1f0614063933e2fa010a5d13cb09d0	not-for-merge	tag 'CocoaPods-7.6.0' of https://github.com/google/GoogleUtilities
+b3bb0c5551fb3f80ca939829639ab5b093edd14f	not-for-merge	tag 'CocoaPods-7.7.0' of https://github.com/google/GoogleUtilities
+22907832079d808e82f1182b21af58ef3880666f	not-for-merge	tag 'CocoaPods-7.8.0' of https://github.com/google/GoogleUtilities
+6ba4fa9ff372a789befa0c52281a56d3dce3b1fe	not-for-merge	tag 'CocoaPods-8.0.0' of https://github.com/google/GoogleUtilities
+66dd81c729364b0425d0c2b73e38a489f32b1717	not-for-merge	tag 'CocoaPods-8.0.1' of https://github.com/google/GoogleUtilities
+9e87f7e8742aac0ef71121a57da40be9cb2b53a8	not-for-merge	tag 'CocoaPods-8.0.2' of https://github.com/google/GoogleUtilities
+60da361632d0de02786f709bdc0c4df340f7613e	not-for-merge	tag 'CocoaPods-8.1.0' of https://github.com/google/GoogleUtilities
+c46e5f8b7c23265f17c24ca7f9fa1b13ded7a822	not-for-merge	tag 'CocoaPods-8.1.1' of https://github.com/google/GoogleUtilities
+7a7a230dc9f169ffe526e58c2708b061682dbde7	not-for-merge	tag 'MulticastAppDelegate-7.2.2' of https://github.com/google/GoogleUtilities
+6fd24d9da5fcc45e4bc22844b894288de608385e	not-for-merge	tag 'MulticastAppDelegate-7.5.0' of https://github.com/google/GoogleUtilities
