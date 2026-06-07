@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
+import '../config/app_typography.dart';
 import '../screens/alignment_detail.dart';
 import '../screens/paywall_screen.dart';
 import '../services/analysis_service.dart';
@@ -179,12 +180,7 @@ class _Header extends StatelessWidget {
             child: Text(
               'New Alignment',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurface,
-                letterSpacing: -0.3,
-              ),
+              style: AppTypography.navTitle(color: scheme.onSurface),
             ),
           ),
           const SizedBox(width: 36),
@@ -352,11 +348,7 @@ class _OptionsSection extends StatelessWidget {
               ),
               child: Text(
                 linkType,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.primary,
-                ),
+                style: AppTypography.chipLabel(color: scheme.primary),
               ),
             ),
           ),

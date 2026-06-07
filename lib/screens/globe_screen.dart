@@ -10,6 +10,8 @@ import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/app_typography.dart';
+
 enum _GlobeView { analyses, markets }
 
 class GlobeScreen extends StatefulWidget {
@@ -426,8 +428,7 @@ class _GlobeScreenState extends State<GlobeScreen> {
                         children: [
                           Text(
                             'Updated ${_refreshedAgo()}',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
+                            style: AppTypography.dataSmall(
                               color: Colors.white.withAlpha(90),
                             ),
                           ),
@@ -765,7 +766,7 @@ class _MarketBottomSheet extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(countryName,
-                  style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: textPrimary)),
+                  style: AppTypography.navTitle(color: textPrimary)),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -779,10 +780,9 @@ class _MarketBottomSheet extends StatelessWidget {
               ),
               child: Text(
                 isOpen ? 'Open' : 'Closed',
-                style: GoogleFonts.inter(
-                  fontSize: 12, fontWeight: FontWeight.w600,
+                style: AppTypography.dataSmall(
                   color: isOpen ? const Color(0xFF30D158) : const Color(0xFFFF3B30),
-                ),
+                ).copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -807,10 +807,8 @@ class _MarketBottomSheet extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 _fmt(close),
-                style: GoogleFonts.inter(
-                  fontSize: 34, fontWeight: FontWeight.w700,
-                  color: textPrimary, letterSpacing: -1.2,
-                ),
+                style: AppTypography.statValue(color: textPrimary)
+                    .copyWith(fontSize: 34, letterSpacing: -1.2),
               ),
               const SizedBox(height: 8),
               Row(
@@ -823,7 +821,8 @@ class _MarketBottomSheet extends StatelessWidget {
                   Text(
                     '${isPositive ? '+' : ''}${changeVal.toStringAsFixed(2)}  '
                     '(${isPositive ? '+' : ''}${pctVal.toStringAsFixed(2)}%)',
-                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500, color: changeColor),
+                    style: AppTypography.chipLabel(color: changeColor)
+                        .copyWith(fontSize: 15),
                   ),
                 ],
               ),
@@ -879,7 +878,7 @@ class _StatBox extends StatelessWidget {
                   color: isDark ? Colors.white38 : Colors.black38)),
           const SizedBox(height: 3),
           Text(value,
-              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
+              style: AppTypography.dataLabel(
                   color: isDark ? Colors.white : Colors.black)),
         ],
       ),

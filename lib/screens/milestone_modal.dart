@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../config/app_typography.dart';
 import '../services/milestone_service.dart';
 import '../widgets/tappable.dart';
 
@@ -114,12 +115,7 @@ class _MilestoneModalState extends State<MilestoneModal> {
 
                   Text(
                     widget.milestone.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -1.5,
-                    ),
+                    style: AppTypography.displayHero(color: Colors.white),
                   ),
 
                   if (widget.milestone.flavourText != null) ...[

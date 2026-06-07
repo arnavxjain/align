@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_typography.dart';
 import 'tappable.dart';
 
 /// Reusable header for all inner screens — circle back button + bold title.
@@ -47,12 +48,7 @@ class PageHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.inter(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.6,
-                  ),
+                  style: AppTypography.heading1(color: scheme.onSurface),
                 ),
               ),
               if (trailing != null) trailing!,

@@ -6,10 +6,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../services/analysis_service.dart';
 import '../services/gemini_service.dart';
 import '../services/reel_service.dart';
+import '../widgets/error_modal.dart';
 import '../widgets/tappable.dart';
 
 class AlignmentDetailScreen extends StatefulWidget {
@@ -60,6 +62,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
   }
 
   Future<void> _doAnalysis(Map<String, dynamic> entry) async {
+    if (mounted) setState(() { _isAnalysing = true; _progress = 0; _statusMessage = 'Analysing…'; });
     try {
       await AnalysisService.runAnalysis(
         pendingEntry: entry,
@@ -76,22 +79,19 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
       setState(() => _isAnalysing = false);
       final msg = e is ReelDownloadException
           ? e.message
-          : 'Something went wrong. Please try again.';
-      await showCupertinoDialog<void>(
-        context: context,
-        builder: (_) => CupertinoAlertDialog(
-          title: const Text('Error'),
-          content: Text(msg),
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+          : (e.toString().toLowerCase().contains('reel')
+              ? "Couldn't download this reel — make sure the link is public."
+              : 'Analysis failed. Please try again.');
+      await showErrorModal(
+        context,
+        title: 'Analysis Failed',
+        message: msg,
+        primaryLabel: 'Try Again',
+        onPrimary: () {
+          final reset = AnalysisService.resetForRetry(widget.alignmentId);
+          if (reset != null && mounted) _doAnalysis(reset);
+        },
       );
-      if (mounted) Navigator.maybePop(context);
     }
   }
 
@@ -201,12 +201,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                   ),
                   title: Text(
                     'Alignment',
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface,
-                      letterSpacing: -0.3,
-                    ),
+                    style: AppTypography.navTitle(color: scheme.onSurface),
                   ),
                   actions: [
                     ValueListenableBuilder<Set<String>>(
@@ -267,9 +262,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
                               const Spacer(),
                               Text(
                                 _relativeTime(createdAt),
-                                style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: scheme.onSurfaceVariant),
+                                style: AppTypography.dataSmall(color: scheme.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -485,12 +478,8 @@ class _Section extends StatelessWidget {
                 const SizedBox(width: 7),
                 Text(
                   title.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 0.5,
-                  ),
+                  style: AppTypography.categoryLabel(color: scheme.onSurfaceVariant)
+                      .copyWith(fontSize: 12, letterSpacing: 0.5),
                 ),
               ],
             ),
@@ -589,12 +578,7 @@ class _RealismItem extends StatelessWidget {
                 ),
                 child: Text(
                   _verdictLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: _verdictColor,
-                    letterSpacing: 0.5,
-                  ),
+                  style: AppTypography.verdict(color: _verdictColor),
                 ),
               ),
             ],
@@ -685,10 +669,7 @@ class _TimelineItem extends StatelessWidget {
             ),
             child: Text(
               position,
-              style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.primary),
+              style: AppTypography.positionLabel(color: scheme.primary),
             ),
           ),
           const SizedBox(width: 12),
@@ -1178,12 +1159,8 @@ class _ChatSheetState extends State<_ChatSheet> {
                     Expanded(
                       child: Text(
                         'Ask about this Alignment',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                          letterSpacing: -0.3,
-                        ),
+                        style: AppTypography.navTitle(color: scheme.onSurface)
+                            .copyWith(fontSize: 16),
                       ),
                     ),
                     Tappable(
@@ -1537,9 +1514,7 @@ class _TypeBadge extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 14),
         const SizedBox(width: 5),
-        Text(label,
-            style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w500, color: color)),
+        Text(label, style: AppTypography.chipLabel(color: color)),
       ],
     );
   }

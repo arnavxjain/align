@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_typography.dart';
+
 
 class AppTheme {
   // ── Light palette ──────────────────────────────────────────────────────────
@@ -18,11 +20,11 @@ class AppTheme {
 
   static TextTheme _buildTextTheme(ThemeData base, Color label, Color secondary) =>
       GoogleFonts.interTextTheme(base.textTheme).copyWith(
-        displayLarge:   GoogleFonts.inter(fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -0.8, color: label),
-        headlineLarge:  GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: label),
-        headlineMedium: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: label),
-        headlineSmall:  GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: label),
-        titleLarge:     GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: label),
+        displayLarge:   AppTypography.displayLarge(color: label).copyWith(fontSize: 34, letterSpacing: -0.8),
+        headlineLarge:  AppTypography.heading1(color: label),
+        headlineMedium: AppTypography.heading2(color: label).copyWith(fontSize: 22, letterSpacing: -0.3),
+        headlineSmall:  AppTypography.heading2(color: label).copyWith(fontSize: 20, letterSpacing: -0.3),
+        titleLarge:     AppTypography.navTitle(color: label),
         titleMedium:    GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: -0.2, color: label),
         titleSmall:     GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: label),
         bodyLarge:      GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: label),
@@ -51,7 +53,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        titleTextStyle: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: _lLabel),
+        titleTextStyle: AppTypography.navTitle(color: _lLabel),
         iconTheme: const IconThemeData(color: _lLabel),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -91,7 +93,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: _dLabel),
+        titleTextStyle: AppTypography.navTitle(color: _dLabel),
         iconTheme: const IconThemeData(color: _dLabel),
       ),
       inputDecorationTheme: InputDecorationTheme(

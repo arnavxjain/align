@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../services/analysis_service.dart';
 import '../widgets/tappable.dart';
@@ -106,20 +107,12 @@ class _InsightsState extends State<InsightsScreen> {
                   children: [
                     Text(
                       'Your Insights',
-                      style: GoogleFonts.inter(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                        letterSpacing: -0.3,
-                      ),
+                      style: AppTypography.navTitle(color: scheme.onSurface),
                     ),
                     if (!_isLoading)
                       Text(
                         'Based on ${completed.length} ${completed.length == 1 ? 'alignment' : 'alignments'}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                        style: AppTypography.dataSmall(color: scheme.onSurfaceVariant),
                       ),
                   ],
                 ),
@@ -370,13 +363,7 @@ class _Content extends StatelessWidget {
           children: [
             Text(
               value,
-              style: GoogleFonts.inter(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: accent,
-                height: 1,
-                letterSpacing: -0.5,
-              ),
+              style: AppTypography.statValue(color: accent),
             ),
             const SizedBox(height: 4),
             Text(
@@ -406,12 +393,7 @@ class _Content extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
-              letterSpacing: -0.2,
-            ),
+            style: AppTypography.sectionTitle(color: scheme.onSurface),
           ),
           const SizedBox(height: 16),
           child,
@@ -499,19 +481,16 @@ class _Content extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(label,
-              style: GoogleFonts.inter(fontSize: 13, color: scheme.onSurface)),
+              style: AppTypography.chipLabel(color: scheme.onSurface)),
         ),
         Text(
           '$pct%',
-          style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface),
+          style: AppTypography.dataLabel(color: scheme.onSurface),
         ),
         const SizedBox(width: 4),
         Text(
           '($count)',
-          style: GoogleFonts.inter(fontSize: 12, color: scheme.onSurfaceVariant),
+          style: AppTypography.dataSmall(color: scheme.onSurfaceVariant),
         ),
       ],
     );
@@ -578,11 +557,7 @@ class _Content extends StatelessWidget {
                 child: Text(
                   '${item.$2}',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
+                  style: AppTypography.dataLabel(color: scheme.onSurface),
                 ),
               ),
             ],
@@ -648,11 +623,8 @@ class _Content extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       label,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: i == 6
-                            ? scheme.primary
-                            : scheme.onSurfaceVariant,
+                      style: AppTypography.chartAxisLabel(
+                        color: i == 6 ? scheme.primary : scheme.onSurfaceVariant,
                       ),
                     ),
                   );
@@ -675,12 +647,8 @@ class _Content extends StatelessWidget {
       children: [
         Text(
           'Insights',
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: -0.2,
-          ),
+          style: AppTypography.sectionHeader(color: scheme.onSurface)
+              .copyWith(fontSize: 15),
         ),
         const SizedBox(height: 10),
         ...list.map(
@@ -797,12 +765,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'No insights yet',
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurface,
-                letterSpacing: -0.3,
-              ),
+              style: AppTypography.navTitle(color: scheme.onSurface),
             ),
             const SizedBox(height: 6),
             Text(

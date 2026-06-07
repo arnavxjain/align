@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,10 +11,12 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../services/auth_service.dart';
 import '../services/milestone_service.dart';
 import '../widgets/page_header.dart';
+import '../widgets/status_bar_blur.dart';
 import '../widgets/tappable.dart';
 import '../widgets/user_card.dart';
 
@@ -28,14 +31,24 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _screenshotCtrl = ScreenshotController();
+  final _scrollCtrl = ScrollController();
   String _firstName = '';
   String _memberSince = '';
   bool _sharing = false;
+  bool _showFloatingBack = false;
+  double _topPad = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfileData();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    // Back button lives at topPad + 16 (header padding) and is 40px tall
+    final show = _scrollCtrl.offset > _topPad + 56;
+    if (show != _showFloatingBack) setState(() => _showFloatingBack = show);
   }
 
   Future<void> _loadProfileData() async {
@@ -116,19 +129,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user   = Supabase.instance.client.auth.currentUser;
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final email  = user?.email ?? '';
 
+    final topPad = MediaQuery.of(context).padding.top;
+    _topPad = topPad; // keep in sync for scroll listener
+
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: PageHeader(title: 'Profile', subtitle: email),
-            ),
+      body: Stack(
+        children: [
+          SafeArea(
+            top: false,
+            child: CustomScrollView(
+              controller: _scrollCtrl,
+              slivers: [
+                // Space for status bar so content starts below it
+                SliverToBoxAdapter(child: SizedBox(height: topPad)),
+
+                SliverToBoxAdapter(
+                  child: PageHeader(title: 'Profile', subtitle: email),
+                ),
 
             SliverToBoxAdapter(
               child: Padding(
@@ -228,12 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           padding: const EdgeInsets.only(left: 4, bottom: 10),
                           child: Text(
                             'Settings',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurfaceVariant,
-                              letterSpacing: 0.4,
-                            ),
+                            style: AppTypography.sectionHeader(color: scheme.onSurfaceVariant),
                           ),
                         ),
 
@@ -265,8 +289,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               _Divider(),
                               _ThemeRow(),
-                              _Divider(),
-                              _ColorPickerRow(),
                             ],
                           ),
                         ),
@@ -311,11 +333,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+          const StatusBarBlur(),
+
+          // Floating back button — rendered above blur, ignored when hidden
+          Positioned(
+            top: topPad + 16,
+            left: 20,
+            child: IgnorePointer(
+              ignoring: !_showFloatingBack,
+              child: AnimatedOpacity(
+                opacity: _showFloatingBack ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: AnimatedScale(
+                  scale: _showFloatingBack ? 1.0 : 0.7,
+                  duration: const Duration(milliseconds: 250),
+                  curve: _showFloatingBack ? Curves.easeOutBack : Curves.easeIn,
+                  child: Tappable(
+                    onTap: () => Navigator.maybePop(context),
+                    child: ClipOval(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.07),
+                          child: Icon(
+                            CupertinoIcons.chevron_left,
+                            color: scheme.onSurface,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// ── Milestone badge + progress + list ─────────────────────────────────────────
+// ── Milestone section ─────────────────────────────────────────────────────────
+
+(Color, Color) _milestoneGradient(String title) =>
+    kMilestoneGradients[title] ?? kMilestoneGradients['Newcomer']!;
 
 class _MilestoneSection extends StatefulWidget {
   final MilestoneInfo current;
@@ -341,89 +408,127 @@ class _MilestoneSectionState extends State<_MilestoneSection> {
 
   @override
   Widget build(BuildContext context) {
+    final (c1, c2) = _milestoneGradient(widget.current.title);
     final nextM = widget.next;
-    final progressFraction = nextM == null
+    final progress = nextM == null
         ? 1.0
         : (widget.count - widget.current.count) /
           (nextM.count - widget.current.count);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Badge: icon + title with subtle glow
+        // ── Hero card ──────────────────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(100),
-            color: widget.scheme.primary.withAlpha(widget.isDark ? 22 : 14),
-            boxShadow: [
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: Color.lerp(c1, c2, 0.5)!.withAlpha(widget.isDark ? 22 : 14),
+            shape: SmoothRectangleBorder(
+              borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+              side: BorderSide(color: c1.withAlpha(70), width: 1),
+            ),
+            shadows: [
               BoxShadow(
-                color: widget.scheme.primary.withAlpha(widget.isDark ? 50 : 30),
-                blurRadius: 24,
+                color: c1.withAlpha(widget.isDark ? 55 : 35),
+                blurRadius: 32,
                 spreadRadius: 0,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(
             children: [
-              HugeIcon(
-                  icon: widget.current.icon,
-                  size: 22,
-                  color: widget.scheme.primary),
-              const SizedBox(width: 10),
-              Text(
-                widget.current.title,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: widget.scheme.primary,
-                  letterSpacing: -0.4,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+                child: Column(
+                  children: [
+                    // Glowing icon squircle
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: ShapeDecoration(
+                        color: c1.withAlpha(widget.isDark ? 30 : 18),
+                        shape: SmoothRectangleBorder(
+                          borderRadius: SmoothBorderRadius(
+                            cornerRadius: 22,
+                            cornerSmoothing: 0.6,
+                          ),
+                          side: BorderSide(color: c1.withAlpha(60), width: 1),
+                        ),
+                        shadows: [
+                          BoxShadow(
+                            color: c1.withAlpha(widget.isDark ? 90 : 60),
+                            blurRadius: 36,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: widget.current.icon,
+                          size: 38,
+                          color: c1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      widget.current.title,
+                      style: AppTypography.heading2(
+                        color: widget.isDark ? Colors.white : const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    if (widget.current.flavourText != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        widget.current.flavourText!,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: widget.isDark
+                              ? Colors.white.withAlpha(100)
+                              : const Color(0xFF1A1A1A).withAlpha(85),
+                          fontStyle: FontStyle.italic,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ],
                 ),
+              ),
+              // Gradient progress strip flush to card bottom
+              LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 5,
+                backgroundColor: c1.withAlpha(widget.isDark ? 40 : 25),
+                valueColor: AlwaysStoppedAnimation<Color>(c1),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
 
-        if (nextM != null) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progressFraction.clamp(0.0, 1.0),
-              minHeight: 4,
-              backgroundColor:
-                  widget.scheme.primary.withAlpha(widget.isDark ? 35 : 25),
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(widget.scheme.primary),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${nextM.count - widget.count} '
-            '${nextM.count - widget.count == 1 ? 'analysis' : 'analyses'} '
-            'until ${nextM.title}',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: widget.scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ] else ...[
-          Text(
-            'Maximum rank achieved',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: widget.scheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        // Progress hint / max rank
+        Center(
+          child: nextM != null
+              ? Text(
+                  '${nextM.count - widget.count} '
+                  '${nextM.count - widget.count == 1 ? 'analysis' : 'analyses'} '
+                  'until ${nextM.title}',
+                  style: AppTypography.dataSmall(color: widget.scheme.onSurfaceVariant)
+                      .copyWith(fontWeight: FontWeight.w500),
+                )
+              : Text(
+                  'Maximum rank achieved',
+                  style: AppTypography.dataSmall(color: c1)
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+        ),
 
         const SizedBox(height: 28),
 
-        // ── Expandable milestones list ─────────────────────────────────────
+        // ── Journey list header ────────────────────────────────────────────
         GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
           behavior: HitTestBehavior.opaque,
@@ -432,13 +537,8 @@ class _MilestoneSectionState extends State<_MilestoneSection> {
             child: Row(
               children: [
                 Text(
-                  'Milestones',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: widget.scheme.onSurfaceVariant,
-                    letterSpacing: 0.4,
-                  ),
+                  'Journey',
+                  style: AppTypography.sectionHeader(color: widget.scheme.onSurfaceVariant),
                 ),
                 const Spacer(),
                 AnimatedRotation(
@@ -462,36 +562,10 @@ class _MilestoneSectionState extends State<_MilestoneSection> {
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: _expanded
-                ? Container(
-                    decoration: ShapeDecoration(
-                      color: widget.isDark
-                          ? const Color(0xFF1C1C1E)
-                          : Colors.white,
-                      shape: SmoothRectangleBorder(
-                        borderRadius: SmoothBorderRadius(
-                          cornerRadius: 16,
-                          cornerSmoothing: 0.6,
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      children: List.generate(kMilestones.length, (i) {
-                        final m       = kMilestones[i];
-                        final unlocked = widget.count >= m.count;
-                        final isLast  = i == kMilestones.length - 1;
-                        return Column(
-                          children: [
-                            _MilestoneRow(
-                              milestone: m,
-                              unlocked:  unlocked,
-                              scheme:    widget.scheme,
-                              isDark:    widget.isDark,
-                            ),
-                            if (!isLast) _Divider(),
-                          ],
-                        );
-                      }),
-                    ),
+                ? _JourneyList(
+                    count: widget.count,
+                    current: widget.current,
+                    isDark: widget.isDark,
                   )
                 : const SizedBox.shrink(),
           ),
@@ -501,67 +575,181 @@ class _MilestoneSectionState extends State<_MilestoneSection> {
   }
 }
 
-class _MilestoneRow extends StatelessWidget {
-  final MilestoneInfo milestone;
-  final bool unlocked;
-  final ColorScheme scheme;
+// ── Journey timeline list ─────────────────────────────────────────────────────
+
+class _JourneyList extends StatelessWidget {
+  final int count;
+  final MilestoneInfo current;
   final bool isDark;
 
-  const _MilestoneRow({
-    required this.milestone,
-    required this.unlocked,
-    required this.scheme,
+  const _JourneyList({
+    required this.count,
+    required this.current,
     required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = unlocked
-        ? scheme.primary
-        : scheme.onSurfaceVariant.withAlpha(60);
-    final textColor = unlocked
-        ? scheme.onSurface
-        : scheme.onSurface.withAlpha(55);
-    final subColor = unlocked
-        ? scheme.onSurfaceVariant
-        : scheme.onSurfaceVariant.withAlpha(50);
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(kMilestones.length, (i) {
+          final m = kMilestones[i];
+          return _JourneyRow(
+            milestone: m,
+            unlocked:  count >= m.count,
+            isCurrent: m.title == current.title,
+            isFirst:   i == 0,
+            isLast:    i == kMilestones.length - 1,
+            isDark:    isDark,
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _JourneyRow extends StatelessWidget {
+  final MilestoneInfo milestone;
+  final bool unlocked;
+  final bool isCurrent;
+  final bool isFirst;
+  final bool isLast;
+  final bool isDark;
+
+  const _JourneyRow({
+    required this.milestone,
+    required this.unlocked,
+    required this.isCurrent,
+    required this.isFirst,
+    required this.isLast,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (c1, c2) = _milestoneGradient(milestone.title);
+
+    final lineColor = unlocked
+        ? c1.withAlpha(isDark ? 90 : 65)
+        : (isDark ? Colors.white.withAlpha(18) : Colors.black.withAlpha(12));
+
+    final node = Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: unlocked
+            ? LinearGradient(
+                colors: [c1, c2],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: unlocked
+            ? null
+            : (isDark ? Colors.white.withAlpha(16) : Colors.black.withAlpha(10)),
+        boxShadow: isCurrent
+            ? [
+                BoxShadow(
+                  color: c1.withAlpha(isDark ? 110 : 80),
+                  blurRadius: 14,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
+      ),
+      child: Center(
+        child: HugeIcon(
+          icon: milestone.icon,
+          size: 18,
+          color: unlocked
+              ? Colors.white.withAlpha(230)
+              : (isDark ? Colors.white.withAlpha(50) : Colors.black.withAlpha(40)),
+        ),
+      ),
+    );
+
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HugeIcon(icon: milestone.icon, size: 22, color: iconColor),
-          const SizedBox(width: 14),
-          Expanded(
+          // Timeline: line above + node + line below
+          SizedBox(
+            width: 56,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  milestone.title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-                Text(
-                  milestone.count == 0
-                      ? 'From the start'
-                      : '${milestone.count} analyses',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: subColor,
-                  ),
-                ),
+                if (!isFirst)
+                  Expanded(
+                    child: Center(child: Container(width: 1.5, color: lineColor)),
+                  )
+                else
+                  const SizedBox(height: 8),
+                node,
+                if (!isLast)
+                  Expanded(
+                    child: Center(child: Container(width: 1.5, color: lineColor)),
+                  )
+                else
+                  const SizedBox(height: 8),
               ],
             ),
           ),
-          if (unlocked)
-            Icon(CupertinoIcons.checkmark_circle_fill,
-                size: 18, color: scheme.primary)
-          else
-            Icon(CupertinoIcons.lock_fill,
-                size: 15, color: scheme.onSurfaceVariant.withAlpha(45)),
+
+          // Title + count
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    milestone.title,
+                    style: AppTypography.milestoneRowTitle(
+                      color: unlocked
+                          ? (isDark ? Colors.white : const Color(0xFF1A1A1A))
+                          : (isDark
+                              ? Colors.white.withAlpha(50)
+                              : const Color(0xFF1A1A1A).withAlpha(50)),
+                      weight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    milestone.count == 0
+                        ? 'From the start'
+                        : '${milestone.count} analyses',
+                    style: AppTypography.dataSmall(
+                      color: unlocked
+                          ? (isDark
+                              ? Colors.white.withAlpha(75)
+                              : const Color(0xFF1A1A1A).withAlpha(65))
+                          : (isDark
+                              ? Colors.white.withAlpha(30)
+                              : const Color(0xFF1A1A1A).withAlpha(30)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Trailing icon
+          SizedBox(
+            width: 40,
+            child: Center(
+              child: unlocked
+                  ? Icon(CupertinoIcons.checkmark_circle_fill, size: 18, color: c1)
+                  : Icon(CupertinoIcons.lock_fill,
+                      size: 14,
+                      color: isDark
+                          ? Colors.white.withAlpha(30)
+                          : Colors.black.withAlpha(25)),
+            ),
+          ),
         ],
       ),
     );
@@ -644,98 +832,6 @@ class _ThemeRow extends StatelessWidget {
                 themeNotifier.value = m;
                 saveTheme(m);
               },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ColorSwatch extends StatelessWidget {
-  final AccentOption option;
-  final bool isSelected;
-  final bool isDark;
-
-  const _ColorSwatch({
-    required this.option,
-    required this.isSelected,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final swatch = isDark ? option.dark : option.light;
-    return Tappable(
-      onTap: () {
-        accentNotifier.value = option.id;
-        saveAccent(option.id);
-      },
-      child: SizedBox(
-        width: 32, height: 32,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (isSelected)
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: swatch, width: 2),
-                ),
-              ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width:  isSelected ? 22 : 26,
-              height: isSelected ? 22 : 26,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: swatch),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ColorPickerRow extends StatelessWidget {
-  const _ColorPickerRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(CupertinoIcons.paintbrush_fill,
-                  color: scheme.onSurfaceVariant, size: 20),
-              const SizedBox(width: 14),
-              Text(
-                'Accent Color',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ValueListenableBuilder<String>(
-            valueListenable: accentNotifier,
-            builder: (context, selectedId, _) => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: kAccentOptions
-                  .map((o) => _ColorSwatch(
-                        option: o,
-                        isSelected: o.id == selectedId,
-                        isDark: isDark,
-                      ))
-                  .toList(),
             ),
           ),
         ],

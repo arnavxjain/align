@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../config/app_typography.dart';
 import '../services/subscription_service.dart';
 import '../widgets/tappable.dart';
 
@@ -148,12 +149,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'Align Pro',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: -0.3,
-                      ),
+                      style: AppTypography.navTitle(color: Colors.white)
+                          .copyWith(fontSize: 16),
                     ),
                     const Spacer(),
                     ClipOval(
@@ -360,12 +357,7 @@ class _BenefitSlide extends StatelessWidget {
               const SizedBox(height: 32),
               Text(
                 benefit.title,
-                style: GoogleFonts.inter(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -1.0,
-                ),
+                style: AppTypography.displayLarge(color: Colors.white),
               ),
               const SizedBox(height: 12),
               Text(

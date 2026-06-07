@@ -4,6 +4,8 @@ import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_typography.dart';
+
 // ── Public widget ─────────────────────────────────────────────────────────────
 
 class UserCard extends StatefulWidget {
@@ -30,7 +32,7 @@ class UserCard extends StatefulWidget {
 
 // ── Gradient palette ──────────────────────────────────────────────────────────
 
-const _kGradients = <String, (Color, Color)>{
+const kMilestoneGradients = <String, (Color, Color)>{
   'Newcomer':        (Color(0xFF3B82F6), Color(0xFF7C3AED)),
   'The Curious':     (Color(0xFF06B6D4), Color(0xFF3B82F6)),
   'Pattern Spotter': (Color(0xFF14B8A6), Color(0xFF059669)),
@@ -133,7 +135,7 @@ class _UserCardState extends State<UserCard> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final tilt = _effectiveTilt;
-    final colors = _kGradients[widget.milestoneTitle] ?? _kGradients['Newcomer']!;
+    final colors = kMilestoneGradients[widget.milestoneTitle] ?? kMilestoneGradients['Newcomer']!;
 
     // Parallax: blob shifts opposite to the tilt direction
     final parallax = Offset(
@@ -169,9 +171,9 @@ class _UserCardState extends State<UserCard> with TickerProviderStateMixin {
                   ),
                   side: BorderSide(
                     color: widget.isDark
-                        ? Colors.white.withAlpha(18)
+                        ? Colors.white.withValues(alpha: 0.11)
                         : Colors.black.withAlpha(12),
-                    width: 0.8,
+                    width: 0.7,
                   ),
                 ),
                 shadows: [
@@ -251,65 +253,49 @@ class _CirclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
-    final h = size.height;
 
-    // Smaller circle — fully contained, centred horizontally in upper third
-    final radius = w * 0.27;
+    // Circle lives above the card — only its glow bleeds in from the top
+    final radius = w * 0.60;
     final center = Offset(
       w * 0.5 + parallax.dx,
-      h * 0.28 + parallax.dy,
+      -radius * 0.75 + parallax.dy,
     );
 
-    final circleRect = Rect.fromCircle(center: center, radius: radius);
-
-    // 1 — Outermost ambient bloom (very wide, very soft)
+    // 1 — Outermost ambient bloom
     canvas.drawCircle(
       center,
-      radius * 3.2,
+      radius * 2.5,
       Paint()
-        ..color = color1.withAlpha(isDark ? 40 : 25)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 72),
+        ..color = color1.withAlpha(isDark ? 50 : 32)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 62),
     );
 
     // 2 — Mid glow volume
     canvas.drawCircle(
       center,
-      radius * 2.0,
+      radius * 1.7,
       Paint()
-        ..color = color2.withAlpha(isDark ? 90 : 60)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40),
+        ..color = color2.withAlpha(isDark ? 95 : 65)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 38),
     );
 
-    // 3 — Halo ring: just outside the circle edge, tight blur
+    // 3 — Tight halo ring just outside the (hidden) circle edge
     canvas.drawCircle(
       center,
-      radius * 1.18,
+      radius * 1.15,
       Paint()
-        ..color = color1.withAlpha(isDark ? 100 : 75)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+        ..color = color1.withAlpha(isDark ? 110 : 80)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
     );
 
-    // 4 — Inner halo: slightly smaller, second colour, adds depth to the rim
+    // 4 — Inner rim
     canvas.drawCircle(
       center,
-      radius * 1.08,
+      radius * 1.05,
       Paint()
-        ..color = color2.withAlpha(isDark ? 80 : 55)
+        ..color = color2.withAlpha(isDark ? 85 : 60)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
     );
-
-    // 5 — Solid gradient circle (the actual disc)
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.3, -0.4),
-          radius: 1.0,
-          colors: [color1, color2],
-        ).createShader(circleRect),
-    );
-
   }
 
   @override
@@ -390,7 +376,7 @@ class _CardContent extends StatelessWidget {
           // Name
           Text(
             firstName.isNotEmpty ? firstName : 'You',
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 38,
               fontWeight: FontWeight.w700,
               color: textPrimary,
@@ -513,12 +499,7 @@ class _StampBadge extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: valuecol,
-              height: 1.0,
-            ),
+            style: AppTypography.stampValue(color: valuecol),
           ),
           const SizedBox(height: 3),
           Text(

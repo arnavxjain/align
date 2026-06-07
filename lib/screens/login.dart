@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
+import '../config/app_typography.dart';
 import '../services/auth_service.dart';
 import '../widgets/tappable.dart';
 
@@ -147,12 +150,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 Text(
                   'Align',
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.8,
-                  ),
+                  style: AppTypography.displayLarge(color: scheme.onSurface)
+                      .copyWith(fontSize: 34, letterSpacing: -0.8),
                   textAlign: TextAlign.center,
                 ),
 
@@ -440,7 +439,7 @@ class _OtpBox extends StatelessWidget {
       child: Center(
         child: Text(
           char,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: scheme.onSurface),
+          style: GoogleFonts.geist(fontSize: 24, fontWeight: FontWeight.w600, color: scheme.onSurface),
         ),
       ),
     );
