@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
@@ -22,6 +22,9 @@ import '../services/milestone_service.dart';
 import '../screens/insights.dart';
 import '../screens/profile.dart';
 import '../utils/transitions.dart';
+import '../widgets/alignment_info_modal.dart';
+import '../widgets/card_actions_modal.dart';
+import '../widgets/delete_confirm_modal.dart';
 import '../widgets/toast.dart';
 import '../widgets/tappable.dart';
 
@@ -33,11 +36,12 @@ class Home extends StatefulWidget {
 }
 
 const _kFilters = <(String, String, Color?, IconData?)>[
-  ('youtube',  'YouTube',      Colors.red, CupertinoIcons.play_rectangle_fill),
-  ('reel',     'Reel',         Color(0xFFBF5AF2), CupertinoIcons.film_fill),
-  ('article',  'Article',      null,              CupertinoIcons.doc_text_fill),
-  ('2plus',    '2+ Analyses',  null,              null),
-  ('24h',      'Last 24h',     null,              null),
+  ('starred', 'Starred', Color(0xFFFF9F0A), CupertinoIcons.star_fill),
+  ('youtube', 'YouTube', Colors.red, CupertinoIcons.play_rectangle_fill),
+  ('reel', 'Reel', Color(0xFFBF5AF2), CupertinoIcons.film_fill),
+  ('article', 'Article', null, CupertinoIcons.doc_text_fill),
+  ('2plus', '2+ Analyses', null, null),
+  ('24h', 'Last 24h', null, null),
 ];
 
 class _HomeState extends State<Home> {
@@ -49,9 +53,9 @@ class _HomeState extends State<Home> {
   Set<String> _inProgressIds = {};
   bool _initialLoadDone = false;
 
-
-  late final TextEditingController _searchCtrl;
-  String _searchQuery = '';
+  Map<String, dynamic>? _activeDeckAlignment;
+  final _homeScrollCtrl = ScrollController();
+  bool _appBarBorderVisible = false;
 
   String get _initial {
     final email = _user?.email ?? '';
@@ -63,8 +67,8 @@ class _HomeState extends State<Home> {
     final salutation = hour < 12
         ? 'Good morning'
         : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
     if (_firstName != null && _firstName!.isNotEmpty) {
       final name = _firstName![0].toUpperCase() + _firstName!.substring(1);
       return '$salutation, $name';
@@ -75,21 +79,24 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    _searchCtrl = TextEditingController()
-      ..addListener(() {
-        if (_searchQuery != _searchCtrl.text) {
-          setState(() => _searchQuery = _searchCtrl.text);
-        }
-      });
+    _homeScrollCtrl.addListener(_onHomeScroll);
     _loadFirstName();
     _loadAlignments();
     AnalysisService.loadStarred();
     alignmentsNotifier.addListener(_onAlignmentsChanged);
   }
 
+  void _onHomeScroll() {
+    final show = _homeScrollCtrl.offset > 2;
+    if (show != _appBarBorderVisible) {
+      setState(() => _appBarBorderVisible = show);
+    }
+  }
+
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    _homeScrollCtrl.removeListener(_onHomeScroll);
+    _homeScrollCtrl.dispose();
     alignmentsNotifier.removeListener(_onAlignmentsChanged);
     super.dispose();
   }
@@ -106,8 +113,10 @@ class _HomeState extends State<Home> {
     // IDs that just transitioned from in-progress to complete (not failed).
     final justFinished = _inProgressIds.difference(currentInProgress);
     for (final id in justFinished) {
-      final entry =
-          alignments.firstWhere((a) => a['id'] == id, orElse: () => {});
+      final entry = alignments.firstWhere(
+        (a) => a['id'] == id,
+        orElse: () => {},
+      );
       if (entry.isEmpty || entry['status'] == 'failed') continue;
       if (mounted) {
         ToastService.show(
@@ -155,8 +164,13 @@ class _HomeState extends State<Home> {
             _ => 'th',
           };
     const weekdays = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday'
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     return '$day$suffix, ${weekdays[now.weekday - 1]}';
   }
@@ -176,30 +190,8 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<bool> _confirmDelete(BuildContext ctx) async {
-    return await showCupertinoDialog<bool>(
-          context: ctx,
-          barrierDismissible: true,
-          builder: (_) => CupertinoAlertDialog(
-            title: const Text('Delete Alignment'),
-            content: const Text(
-                'This will permanently remove this alignment and all its analysis data.'),
-            actions: [
-              CupertinoDialogAction(
-                isDefaultAction: true,
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              CupertinoDialogAction(
-                isDestructiveAction: true,
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
+  Future<bool> _confirmDelete(BuildContext ctx) =>
+      showDeleteConfirmModal(ctx);
 
   Future<void> _loadFirstName() async {
     final userId = _user?.id;
@@ -216,22 +208,21 @@ class _HomeState extends State<Home> {
 
   List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> list) {
     return list.where((a) {
-      // Search query
-      if (_searchQuery.isNotEmpty && !_matchesSearch(a, _searchQuery)) {
-        return false;
-      }
-
       if (_activeFilters.isEmpty) return true;
 
       final type = a['content_type'] as String? ?? 'article';
-      final typeFilters =
-          {'youtube', 'reel', 'article'}.intersection(_activeFilters);
+      final typeFilters = {
+        'youtube',
+        'reel',
+        'article',
+      }.intersection(_activeFilters);
       if (typeFilters.isNotEmpty && !typeFilters.contains(type)) return false;
 
       if (_activeFilters.contains('2plus')) {
         final raw = a['analyses'];
-        final count =
-            (raw is Map ? raw : {}).values.where((v) => v != null).length;
+        final count = (raw is Map ? raw : {}).values
+            .where((v) => v != null)
+            .length;
         if (count < 2) return false;
       }
 
@@ -242,33 +233,14 @@ class _HomeState extends State<Home> {
         }
       }
 
+      if (_activeFilters.contains('starred')) {
+        if (!starredNotifier.value.contains(a['id'] as String? ?? '')) {
+          return false;
+        }
+      }
+
       return true;
     }).toList();
-  }
-
-  static bool _matchesSearch(Map<String, dynamic> a, String q) {
-    final lower = q.toLowerCase();
-
-    if ((a['title'] as String? ?? '').toLowerCase().contains(lower)) return true;
-    if ((a['content_type'] as String? ?? '').toLowerCase().contains(lower)) return true;
-
-    for (final c in (a['countries'] as List? ?? [])) {
-      if ((c['code'] as String? ?? '').toLowerCase().contains(lower)) return true;
-      if ((c['reason'] as String? ?? '').toLowerCase().contains(lower)) return true;
-    }
-
-    final analyses = a['analyses'] as Map? ?? {};
-
-    for (final p in (analyses['products'] as List? ?? [])) {
-      if ((p['product'] as String? ?? '').toLowerCase().contains(lower)) return true;
-      if ((p['brand'] as String? ?? '').toLowerCase().contains(lower)) return true;
-    }
-
-    for (final c in (analyses['realism_check'] as List? ?? [])) {
-      if ((c['claim'] as String? ?? '').toLowerCase().contains(lower)) return true;
-    }
-
-    return false;
   }
 
   @override
@@ -282,327 +254,968 @@ class _HomeState extends State<Home> {
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
         child: Stack(
-        children: [
-      CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 78,
-            toolbarHeight: 75,
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            automaticallyImplyLeading: false,
-            titleSpacing: 20,
-            flexibleSpace: ClipRect(
-              child: Stack(
-                children: [
-                  BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      color: scaffoldBg.withAlpha(isDark ? 80 : 110),
-                    ),
-                  ),
-                  Positioned(
-                    left: 0, right: 0, bottom: 0,
-                    child: Container(
-                      height: 0.5,
-                      color: isDark
-                          ? const Color(0xFF424242)
-                          : const Color(0xFFD1D1D6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            title: Row(
-              children: [
-                SvgPicture.asset(
-                  'lib/assets/logo.svg',
-                  width: 28,
-                  height: 29,
-                  colorFilter: ColorFilter.mode(scheme.onSurface, BlendMode.srcIn),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _greeting,
-                          style: AppTypography.navTitle(color: scheme.onSurface),
+          children: [
+            CustomScrollView(
+              controller: _homeScrollCtrl,
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  expandedHeight: 78,
+                  toolbarHeight: 75,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  titleSpacing: 20,
+                  title: Row(
+                    children: [
+                      SvgPicture.asset(
+                        'lib/assets/logo.svg',
+                        width: 28,
+                        height: 28.5,
+                        colorFilter: ColorFilter.mode(
+                          scheme.onSurface,
+                          BlendMode.srcIn,
                         ),
-                        const SizedBox(width: 3),
-                        Icon(Icons.keyboard_arrow_down_rounded,
-                            color: scheme.onSurface, size: 18),
-                      ],
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Tappable(
+                            onTap: () {},
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _greeting,
+                                  style: AppTypography.navTitle(
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: scheme.onSurface,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            _todayLabel(),
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    Tappable(
+                      scaleOnPress: true,
+                      onTap: () => Navigator.push(
+                        context,
+                        AppRoute.modal(const PaywallScreen()),
+                      ),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? const Color(0xFF333333)
+                              : const Color(0xFFE5E5EA),
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'lib/assets/logo-pro.svg',
+                            // width: 20,
+                            height: 17,
+                          ),
+                        ),
+                      ),
                     ),
-                    Text(
-                      _todayLabel(),
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: scheme.onSurfaceVariant,
+                    const SizedBox(width: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: Tappable(
+                        onTap: () => Navigator.push(
+                          context,
+                          AppRoute.push(const ProfileScreen()),
+                        ),
+                        child: _Avatar(
+                          initial: _initial,
+                          primary: scheme.primary,
+                        ),
                       ),
                     ),
                   ],
                 ),
+
+                if (!_isLoading)
+                  SliverToBoxAdapter(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: _appBarBorderVisible ? 14 : 4,
+                    ),
+                  ),
+
+                if (!_isLoading)
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _FilterBarDelegate(
+                      activeFilters: _activeFilters,
+                      onToggle: (key) => setState(() {
+                        _activeFilters.contains(key)
+                            ? _activeFilters.remove(key)
+                            : _activeFilters.add(key);
+                      }),
+                      onClear: () => setState(() => _activeFilters.clear()),
+                      scheme: scheme,
+                      isDark: isDark,
+                      scaffoldBg: scaffoldBg,
+                      isScrolled: _appBarBorderVisible,
+                    ),
+                  ),
+
+                SliverToBoxAdapter(
+                  child: _isLoading
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 60),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : ValueListenableBuilder<List<Map<String, dynamic>>>(
+                          valueListenable: alignmentsNotifier,
+                          builder: (context, alignments, _) {
+                            if (alignments.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  24,
+                                  20,
+                                  150,
+                                ),
+                                child: _EmptyState(
+                                  scheme: scheme,
+                                  isDark: isDark,
+                                ),
+                              );
+                            }
+                            final filtered = _applyFilters(alignments);
+                            return ValueListenableBuilder<Set<String>>(
+                              valueListenable: starredNotifier,
+                              builder: (context, starred, _) {
+                                final screenH = MediaQuery.of(context).size.height;
+                                return ConstrainedBox(
+                                  constraints: BoxConstraints(minHeight: screenH * 0.72),
+                                  child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 20,
+                                    bottom: 150,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 240,
+                                        ),
+                                        switchInCurve: Curves.easeOut,
+                                        switchOutCurve: Curves.easeIn,
+                                        transitionBuilder: (child, animation) =>
+                                            FadeTransition(
+                                              opacity: animation,
+                                              child: child,
+                                            ),
+                                        child: filtered.isEmpty
+                                            ? Padding(
+                                                key: const ValueKey(
+                                                  '__no_results__',
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 20,
+                                                    ),
+                                                child: _NoFilterResults(
+                                                  key: const ValueKey(
+                                                    '__empty__',
+                                                  ),
+                                                  scheme: scheme,
+                                                ),
+                                              )
+                                            : Column(
+                                                key: ValueKey(
+                                                  'deck_${_activeFilters.join(',')}',
+                                                ),
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.fromLTRB(
+                                                          20,
+                                                          0,
+                                                          20,
+                                                          70,
+                                                        ),
+                                                    child: _SectionDividerLabel(
+                                                      label: 'ALIGNMENTS',
+                                                      scheme: scheme,
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(left: 10),
+                                                    child: AlignmentDeck(
+                                                    alignments: filtered,
+                                                    starred: starred,
+                                                    isDark: isDark,
+                                                    scheme: scheme,
+                                                    confirmDelete: () =>
+                                                        _confirmDelete(context),
+                                                    onOpen: (id) =>
+                                                        Navigator.push(
+                                                          context,
+                                                          AppRoute.transparentModal(AlignmentDetailScreen(
+                                                            alignmentId: id,
+                                                          )),
+                                                        ),
+                                                    onDelete: AnalysisService
+                                                        .deleteAlignment,
+                                                    onActiveChanged: (a) =>
+                                                        setState(
+                                                          () =>
+                                                              _activeDeckAlignment =
+                                                                  a,
+                                                        ),
+                                                  ),
+                                                  ),
+                                                  SizedBox(height: 35),
+                                                  _DeckTitleBox(
+                                                    alignment:
+                                                        _activeDeckAlignment ??
+                                                        (filtered.isNotEmpty
+                                                            ? filtered.first
+                                                            : null),
+                                                    scheme: scheme,
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
-            actions: [
-              Tappable(
-                scaleOnPress: true,
-                onTap: () => Navigator.push(
-                  context,
-                  AppRoute.modal(const PaywallScreen()),
-                ),
-                child: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDark ? const Color(0xFF333333) : const Color(0xFFE5E5EA),
+            // ── Detail page blur overlay ─────────────────────────────────────
+            ValueListenableBuilder<double>(
+              valueListenable: detailBlurNotifier,
+              builder: (_, amount, __) {
+                if (amount <= 0) return const SizedBox.shrink();
+                return Positioned.fill(
+                  child: IgnorePointer(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: amount * 14,
+                        sigmaY: amount * 14,
+                      ),
+                      child: Container(
+                        color: Colors.black.withValues(alpha: amount * (isDark ? 0.28 : 0.18)),
+                      ),
+                    ),
                   ),
+                );
+              },
+            ),
+            // ── Floating nav bar ──────────────────────────────────────────────
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Center(
-                    child: SvgPicture.asset(
-                      'lib/assets/logo-pro.svg',
-                      // width: 20,
-                      height: 17,
-                    ),
+                    child: _NavBar(scheme: scheme, isDark: isDark),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: Tappable(
-                  onTap: () => Navigator.push(
-                    context,
-                    AppRoute.push(const ProfileScreen()),
-                  ),
-                  child: _Avatar(initial: _initial, primary: scheme.primary),
-                ),
-              ),
-            ],
-          ),
-
-          if (!_isLoading)
-            const SliverToBoxAdapter(child: SizedBox(height: 14)),
-
-          if (!_isLoading)
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _FilterBarDelegate(
-                activeFilters: _activeFilters,
-                searchController: _searchCtrl,
-                onToggle: (key) => setState(() {
-                  _activeFilters.contains(key)
-                      ? _activeFilters.remove(key)
-                      : _activeFilters.add(key);
-                }),
-                scheme: scheme,
-                isDark: isDark,
-                scaffoldBg: scaffoldBg,
-              ),
-            ),
-
-          SliverToBoxAdapter(
-            child: _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 60),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : ValueListenableBuilder<List<Map<String, dynamic>>>(
-                    valueListenable: alignmentsNotifier,
-                    builder: (context, alignments, _) {
-                      if (alignments.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 150),
-                          child: _EmptyState(scheme: scheme, isDark: isDark),
-                        );
-                      }
-                      final filtered = _applyFilters(alignments);
-                      return ValueListenableBuilder<Set<String>>(
-                        valueListenable: starredNotifier,
-                        builder: (context, starred, _) {
-                          final featuredItem = filtered.first;
-                          final restItems = filtered.length > 1
-                              ? filtered.sublist(1)
-                              : <Map<String, dynamic>>[];
-                          final featuredId = featuredItem['id'] as String? ?? '';
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 20, bottom: 150),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 240),
-                                  switchInCurve: Curves.easeOut,
-                                  switchOutCurve: Curves.easeIn,
-                                  transitionBuilder: (child, animation) =>
-                                      FadeTransition(opacity: animation, child: child),
-                                  child: filtered.isEmpty
-                                      ? Padding(
-                                          key: const ValueKey('__no_results__'),
-                                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                                          child: _searchQuery.isNotEmpty
-                                              ? _NoSearchResults(
-                                                  key: const ValueKey('__search_empty__'),
-                                                  scheme: scheme,
-                                                )
-                                              : _NoFilterResults(
-                                                  key: const ValueKey('__empty__'),
-                                                  scheme: scheme,
-                                                ),
-                                        )
-                                      : Column(
-                                          key: ValueKey(
-                                              'list_${_activeFilters.join(',')}_$_searchQuery'),
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Featured card
-                                            Center(
-                                              child: _FeaturedCard(
-                                                alignment: featuredItem,
-                                                isStarred: starred.contains(featuredId),
-                                                isDark: isDark,
-                                                scheme: scheme,
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  AppRoute.push(
-                                                    AlignmentDetailScreen(alignmentId: featuredId),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            if (restItems.isNotEmpty) ...[
-                                              Padding(
-                                                padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Container(
-                                                        height: 0.5,
-                                                        color: scheme.onSurfaceVariant
-                                                            .withValues(alpha: 0.2),
-                                                      ),
-                                                    ),
-                                                    Padding(
-                                                      padding: const EdgeInsets.symmetric(
-                                                          horizontal: 12),
-                                                      child: Text(
-                                                        'RECENT',
-                                                        style: AppTypography.categoryLabel(
-                                                          color: scheme.onSurfaceVariant
-                                                              .withValues(alpha: 0.45),
-                                                        ).copyWith(letterSpacing: 3.4),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      child: Container(
-                                                        height: 0.5,
-                                                        color: scheme.onSurfaceVariant
-                                                            .withValues(alpha: 0.2),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 20),
-                                                child: Column(
-                                                  children: List.generate(restItems.length, (i) {
-                                                    final alignment = restItems[i];
-                                                    final id = alignment['id'] as String? ?? '$i';
-                                                    final isAnalysing =
-                                                        alignment['is_analyzing'] == true;
-                                                    final isFailed =
-                                                        alignment['status'] == 'failed';
-                                                    return Padding(
-                                                      padding: const EdgeInsets.only(bottom: 10),
-                                                      child: Dismissible(
-                                                        key: ValueKey(id),
-                                                        direction: DismissDirection.endToStart,
-                                                        background: const _DeleteBackground(),
-                                                        confirmDismiss: isAnalysing
-                                                            ? null
-                                                            : (_) => _confirmDelete(context),
-                                                        onDismissed: isAnalysing
-                                                            ? null
-                                                            : (_) => AnalysisService
-                                                                .deleteAlignment(id),
-                                                        child: _AlignmentTile(
-                                                          key: ValueKey('tile_$id'),
-                                                          index: i,
-                                                          alignment: alignment,
-                                                          isStarred: starred.contains(id),
-                                                          isAnalysing: isAnalysing,
-                                                          isFailed: isFailed,
-                                                          isDark: isDark,
-                                                          scheme: scheme,
-                                                          onTap: isFailed
-                                                              ? null
-                                                              : () => Navigator.push(
-                                                                    context,
-                                                                    AppRoute.push(
-                                                                      AlignmentDetailScreen(
-                                                                          alignmentId: id),
-                                                                    ),
-                                                                  ),
-                                                          onRetry: isFailed
-                                                              ? () {
-                                                                  final entry =
-                                                                      AnalysisService
-                                                                          .resetForRetry(id);
-                                                                  if (entry != null) {
-                                                                    AnalysisService
-                                                                        .runAnalysis(
-                                                                            pendingEntry: entry)
-                                                                        .catchError((_) {});
-                                                                  }
-                                                                }
-                                                              : null,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-          // ── Floating nav bar ──────────────────────────────────────────────
-          Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Center(
-                  child: _NavBar(scheme: scheme, isDark: isDark),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
+    );
+  }
+}
+
+// ── Alignment deck ────────────────────────────────────────────────────────────
+
+class AlignmentDeck extends StatefulWidget {
+  final List<Map<String, dynamic>> alignments;
+  final Set<String> starred;
+  final bool isDark;
+  final ColorScheme scheme;
+  final Future<bool> Function() confirmDelete;
+  final void Function(String id) onOpen;
+  final Future<void> Function(String id) onDelete;
+  final ValueChanged<Map<String, dynamic>>? onActiveChanged;
+
+  const AlignmentDeck({
+    required this.alignments,
+    required this.starred,
+    required this.isDark,
+    required this.scheme,
+    required this.confirmDelete,
+    required this.onOpen,
+    required this.onDelete,
+    this.onActiveChanged,
+    super.key,
+  });
+
+  @override
+  State<AlignmentDeck> createState() => _AlignmentDeckState();
+}
+
+class _AlignmentDeckState extends State<AlignmentDeck> {
+  static const _deckHeight = 258.0;
+  static const _cardHeight = 220.0;
+  static const _cardBodyHeight = 168.0;
+  static const _cardWidthFactor = 0.56;
+  static const _cardHorizontalMargin = 10.0;
+  static const _slotOffset = 86.0;
+  static const _restingDrop = 42.0;
+  static const _renderWindowSlots = 6.0;
+  static const _snapDelay = Duration(milliseconds: 30);
+  static const _snapDuration = Duration(milliseconds: 190);
+
+  late final ScrollController _scrollController;
+  Timer? _snapTimer;
+  int _activeIndex = 0;
+  bool _isSnapping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_handleScroll);
+  }
+
+  @override
+  void dispose() {
+    _snapTimer?.cancel();
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(AlignmentDeck oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.alignments.isEmpty) {
+      if (_activeIndex != 0) _activeIndex = 0;
+      return;
+    }
+
+    final currentId = _idFor(oldWidget.alignments, _activeIndex);
+    final preservedIndex = currentId == null
+        ? -1
+        : widget.alignments.indexWhere((a) => a['id'] == currentId);
+    final nextIndex = preservedIndex >= 0
+        ? preservedIndex
+        : _activeIndex.clamp(0, widget.alignments.length - 1);
+
+    if (nextIndex != _activeIndex) {
+      _activeIndex = nextIndex;
+      _isSnapping = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+        _scrollController.jumpTo(_scrollOffsetForIndex(_activeIndex));
+      });
+    }
+  }
+
+  static String? _idFor(List<Map<String, dynamic>> alignments, int index) {
+    if (index < 0 || index >= alignments.length) return null;
+    return alignments[index]['id'] as String?;
+  }
+
+  double _scrollOffsetForIndex(int index) => index * _slotOffset;
+
+  double get _rawActivePosition {
+    if (!_scrollController.hasClients) return _activeIndex.toDouble();
+    return (_scrollController.offset / _slotOffset).clamp(
+      0,
+      (widget.alignments.length - 1).toDouble(),
+    );
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients || widget.alignments.isEmpty) return;
+    _scheduleSnap();
+    final nextIndex = _rawActivePosition.round().clamp(
+      0,
+      widget.alignments.length - 1,
+    );
+    if (nextIndex == _activeIndex) {
+      setState(() {});
+      return;
+    }
+    setState(() => _activeIndex = nextIndex);
+    HapticFeedback.selectionClick();
+    widget.onActiveChanged?.call(widget.alignments[nextIndex]);
+  }
+
+  void _scheduleSnap() {
+    if (_isSnapping || widget.alignments.length < 2) return;
+    _snapTimer?.cancel();
+    _snapTimer = Timer(_snapDelay, _snapToNearestCard);
+  }
+
+  Future<void> _snapToNearestCard() async {
+    _snapTimer?.cancel();
+    if (_isSnapping || !_scrollController.hasClients) return;
+    final targetIndex = _rawActivePosition.round().clamp(
+      0,
+      widget.alignments.length - 1,
+    );
+    final target = _scrollOffsetForIndex(targetIndex);
+    final distance = (_scrollController.offset - target).abs();
+    if (distance < 1) {
+      if (_activeIndex != targetIndex) {
+        setState(() => _activeIndex = targetIndex);
+      }
+      return;
+    }
+
+    setState(() => _isSnapping = true);
+    await _scrollController.animateTo(
+      target,
+      duration: _snapDuration,
+      curve: Curves.fastOutSlowIn,
+    );
+    if (!mounted) return;
+    setState(() {
+      _activeIndex = targetIndex;
+      _isSnapping = false;
+    });
+    widget.onActiveChanged?.call(widget.alignments[targetIndex]);
+  }
+
+  Future<void> _onCardLongPress(BuildContext context, String id) async {
+    if (_isSnapping) return;
+    final alignment = widget.alignments.firstWhere(
+      (a) => a['id'] == id, orElse: () => {},
+    );
+    final rawTitle = alignment['title'] as String?;
+    final url = alignment['url'] as String? ?? '';
+    final title = (rawTitle != null && rawTitle.isNotEmpty)
+        ? rawTitle
+        : Uri.tryParse(url)?.host.replaceFirst('www.', '') ?? 'Untitled';
+    final contentType = alignment['content_type'] as String? ?? 'article';
+    final action = await showCardActionsModal(context, id, title, contentType);
+    if (!mounted || action == null) return;
+    switch (action) {
+      case CardAction.star:
+        AnalysisService.toggleStar(id);
+      case CardAction.info:
+        if (mounted) await showAlignmentInfoModal(context, alignment);
+      case CardAction.delete:
+        final confirmed = await showDeleteConfirmModal(context);
+        if (!mounted || !confirmed) return;
+        HapticFeedback.mediumImpact();
+        await widget.onDelete(id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (widget.alignments.isEmpty) return const SizedBox.shrink();
+
+        final deckWidth = constraints.maxWidth;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final cardOuterWidth =
+            (screenWidth * _cardWidthFactor) + (_cardHorizontalMargin * 2);
+        final sideInset = (deckWidth - cardOuterWidth) / 2;
+        final contentWidth =
+            (sideInset * 2) +
+            cardOuterWidth +
+            (_slotOffset * (widget.alignments.length - 1));
+        final rawPosition = _rawActivePosition;
+        final cardEntries = <({int index, Widget child})>[];
+
+        for (var index = 0; index < widget.alignments.length; index++) {
+          final relative = index - rawPosition;
+          if (relative.abs() > _renderWindowSlots) continue;
+
+          final alignment = widget.alignments[index];
+          final id = alignment['id'] as String? ?? '$index';
+          final activation = (1 - relative.abs()).clamp(0.0, 1.0);
+          final dimAmount = ((1 - activation) * (widget.isDark ? 0.34 : 0.14)).clamp(0.0, 1.0);
+          final offsetX = sideInset + (_slotOffset * index);
+          final offsetY =
+              _restingDrop * (1 - Curves.easeOut.transform(activation));
+          final isActive = index == _activeIndex;
+
+          cardEntries.add((
+            index: index,
+            child: Positioned(
+              key: ValueKey('deck_position_$id'),
+              left: offsetX,
+              top: 0,
+              child: Transform.translate(
+                offset: Offset(0, offsetY),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onLongPress: () => _onCardLongPress(context, id),
+                  child: _FeaturedCard(
+                    alignment: alignment,
+                    isStarred: widget.starred.contains(id),
+                    isDark: widget.isDark,
+                    scheme: widget.scheme,
+                    widthFactor: _cardWidthFactor,
+                    cardHeight: _cardBodyHeight,
+                    horizontalMargin: _cardHorizontalMargin,
+                    dimAmount: dimAmount,
+                    onTap: () => widget.onOpen(id),
+                  ),
+                ),
+              ),
+            ),
+          ));
+        }
+
+        cardEntries.sort((a, b) => a.index.compareTo(b.index));
+
+        return SizedBox(
+          height: _deckHeight,
+          width: double.infinity,
+          child: NotificationListener<ScrollEndNotification>(
+            onNotification: (_) {
+              _snapToNearestCard();
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              clipBehavior: Clip.none,
+              child: SizedBox(
+                width: contentWidth,
+                height: _cardHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: cardEntries.map((entry) => entry.child).toList(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Deck title box ────────────────────────────────────────────────────────────
+
+class _DeckTitleBox extends StatelessWidget {
+  final Map<String, dynamic>? alignment;
+  final ColorScheme scheme;
+
+  const _DeckTitleBox({required this.alignment, required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    final a = alignment;
+    if (a == null) return const SizedBox.shrink();
+
+    final rawTitle = a['title'] as String?;
+    final url = a['original_url'] as String? ?? '';
+    final displayTitle = (rawTitle != null && rawTitle.isNotEmpty)
+        ? rawTitle
+        : Uri.tryParse(url)?.host.replaceFirst('www.', '') ?? 'Untitled';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeIn,
+        switchOutCurve: Curves.easeOut,
+        child: Text(
+          displayTitle,
+          key: ValueKey(displayTitle),
+          style: AppTypography.dataSmall(
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+          ),
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Activity heatmap ──────────────────────────────────────────────────────────
+
+class _ActivityHeatmap extends StatefulWidget {
+  final List<Map<String, dynamic>> alignments;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  const _ActivityHeatmap({
+    required this.alignments,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  @override
+  State<_ActivityHeatmap> createState() => _ActivityHeatmapState();
+}
+
+class _ActivityHeatmapState extends State<_ActivityHeatmap> {
+  static const _weeks = 16;
+  static const _gap = 3.0;
+
+  int? _tipCol;
+  DateTime? _tipDate;
+  int _tipCount = 0;
+  Timer? _tipTimer;
+
+  @override
+  void dispose() {
+    _tipTimer?.cancel();
+    super.dispose();
+  }
+
+  Map<DateTime, int> _buildDayMap() {
+    final map = <DateTime, int>{};
+    for (final a in widget.alignments) {
+      if (a['is_analyzing'] == true || a['status'] == 'failed') continue;
+      final raw = a['created_at'] as String?;
+      if (raw == null) continue;
+      final dt = DateTime.tryParse(raw)?.toLocal();
+      if (dt == null) continue;
+      final day = DateTime(dt.year, dt.month, dt.day);
+      map[day] = (map[day] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  Color _cellColor(int count) {
+    if (widget.isDark) {
+      if (count == 0) return Colors.white.withValues(alpha: 0.06);
+      if (count == 1) return const Color(0xFF1a3a5c);
+      if (count <= 3) return const Color(0xFF1e6bb8);
+      if (count <= 5) return const Color(0xFF2188ff);
+      return const Color(0xFF79c0ff);
+    } else {
+      if (count == 0) return Colors.black.withValues(alpha: 0.07);
+      if (count == 1) return const Color(0xFFBBDEFB);
+      if (count <= 3) return const Color(0xFF64B5F6);
+      if (count <= 5) return const Color(0xFF1E88E5);
+      return const Color(0xFF0D47A1);
+    }
+  }
+
+  void _showTip(int col, DateTime date, int count) {
+    _tipTimer?.cancel();
+    setState(() {
+      _tipCol = col;
+      _tipDate = date;
+      _tipCount = count;
+    });
+    _tipTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _tipCol = null);
+    });
+  }
+
+  static String _mon(int m) => const [
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayRow = today.weekday - 1; // Mon=0 … Sun=6
+    final dayMap = _buildDayMap();
+
+    final legendColors = widget.isDark
+        ? const [
+            Color(0x0FFFFFFF),
+            Color(0xFF1a3a5c),
+            Color(0xFF1e6bb8),
+            Color(0xFF2188ff),
+            Color(0xFF79c0ff),
+          ]
+        : const [
+            Color(0x12000000),
+            Color(0xFFBBDEFB),
+            Color(0xFF64B5F6),
+            Color(0xFF1E88E5),
+            Color(0xFF0D47A1),
+          ];
+    final mutedText = widget.scheme.onSurfaceVariant.withValues(alpha: 0.45);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: LayoutBuilder(
+        builder: (_, constraints) {
+          // Fit exactly _weeks columns into the available width
+          final step = (constraints.maxWidth + _gap) / _weeks;
+          final cellSize = step - _gap;
+          final gridW = constraints.maxWidth;
+          final gridH = 7 * step - _gap;
+
+          // ── Month labels ────────────────────────────────────────────────
+          final monthLabels = <Widget>[];
+          String? lastLbl;
+          for (int col = 0; col < _weeks; col++) {
+            final daysBack = ((_weeks - 1) - col) * 7 + todayRow;
+            final monday = today.subtract(Duration(days: daysBack));
+            final lbl = _mon(monday.month);
+            if (lbl != lastLbl) {
+              lastLbl = lbl;
+              monthLabels.add(
+                Positioned(
+                  left: col * step,
+                  top: 0,
+                  child: Text(
+                    lbl,
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      color: widget.scheme.onSurfaceVariant.withValues(
+                        alpha: 0.45,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          // ── Grid cells ──────────────────────────────────────────────────
+          final cells = <Widget>[];
+          for (int col = 0; col < _weeks; col++) {
+            for (int row = 0; row < 7; row++) {
+              final daysBack = ((_weeks - 1) - col) * 7 + (todayRow - row);
+              final isFuture = daysBack < 0;
+              final date = today.subtract(Duration(days: daysBack));
+              final count = isFuture ? 0 : (dayMap[date] ?? 0);
+
+              cells.add(
+                Positioned(
+                  left: col * step,
+                  top: row * step,
+                  child: GestureDetector(
+                    onTap: isFuture ? null : () => _showTip(col, date, count),
+                    child: Container(
+                      width: cellSize,
+                      height: cellSize,
+                      decoration: BoxDecoration(
+                        color: isFuture
+                            ? Colors.transparent
+                            : _cellColor(count),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          // ── Tooltip ─────────────────────────────────────────────────────
+          Widget? tooltip;
+          if (_tipCol != null && _tipDate != null) {
+            final d = _tipDate!;
+            final lbl = _tipCount == 0
+                ? 'No analyses · ${_mon(d.month)} ${d.day}'
+                : '$_tipCount ${_tipCount == 1 ? 'analysis' : 'analyses'} · ${_mon(d.month)} ${d.day}';
+
+            const tipW = 150.0;
+            final rawLeft = _tipCol! * step + cellSize / 2 - tipW / 2;
+            final tipLeft = rawLeft.clamp(0.0, gridW - tipW);
+
+            tooltip = Positioned(
+              left: tipLeft,
+              bottom: gridH + 6,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: Container(
+                    width: tipW,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.isDark
+                          ? Colors.white.withValues(alpha: 0.13)
+                          : Colors.black.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: widget.isDark
+                            ? Colors.white.withValues(alpha: 0.14)
+                            : Colors.black.withValues(alpha: 0.09),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      lbl,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: widget.isDark
+                            ? Colors.white
+                            : const Color(0xFF1C1C1E),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: gridW,
+                height: 14,
+                child: Stack(children: monthLabels),
+              ),
+              const SizedBox(height: 3),
+              SizedBox(
+                width: gridW,
+                height: gridH,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [...cells, ?tooltip],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  // Legend — left-aligned
+                  Text(
+                    'Less',
+                    style: GoogleFonts.inter(fontSize: 9, color: mutedText),
+                  ),
+                  const SizedBox(width: 4),
+                  ...legendColors.map(
+                    (c) => Container(
+                      width: cellSize,
+                      height: cellSize,
+                      margin: const EdgeInsets.only(left: 2),
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'More',
+                    style: GoogleFonts.inter(fontSize: 9, color: mutedText),
+                  ),
+                  const Spacer(),
+                  // View More Insights link — right-aligned
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      AppRoute.push(const InsightsScreen()),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View More Insights',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: mutedText,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 10,
+                          color: mutedText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SectionDividerLabel extends StatelessWidget {
+  final String label;
+  final ColorScheme scheme;
+
+  const _SectionDividerLabel({required this.label, required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    final lineColor = scheme.onSurfaceVariant.withValues(alpha: 0.28);
+    final textColor = scheme.onSurfaceVariant.withValues(alpha: 0.72);
+
+    return Row(
+      children: [
+        Expanded(child: Container(height: 0.7, color: lineColor)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 5.2,
+              color: textColor,
+            ),
+          ),
+        ),
+        Expanded(child: Container(height: 0.7, color: lineColor)),
+      ],
     );
   }
 }
@@ -617,8 +1230,10 @@ class _NavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveBg = isDark ? const Color(0xFF3A3A3C) : const Color(0xFFD1D1D6);
-    final inactiveIcon = isDark ? Colors.white70 : const Color(0xFF636366);
+    final inactiveBg = isDark
+        ? const Color(0xFF3A3A3C)
+        : const Color(0xFFE8E4DF);
+    final inactiveIcon = isDark ? Colors.white70 : const Color(0xFF7A7470);
     final borderColor = isDark
         ? Colors.white.withAlpha(50)
         : Colors.black.withAlpha(35);
@@ -628,7 +1243,10 @@ class _NavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
+        borderRadius: SmoothBorderRadius(
+          cornerRadius: 50,
+          cornerSmoothing: 0.6,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(isDark ? 50 : 40),
@@ -646,7 +1264,10 @@ class _NavBar extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
+              borderRadius: SmoothBorderRadius(
+                cornerRadius: 50,
+                cornerSmoothing: 0.6,
+              ),
               border: Border.all(color: borderColor, width: 0.7),
             ),
             child: Row(
@@ -661,8 +1282,15 @@ class _NavBar extends StatelessWidget {
                   child: Container(
                     width: 45,
                     height: 45,
-                    decoration: BoxDecoration(color: inactiveBg.withValues(alpha: 0.5), shape: BoxShape.circle),
-                    child: Icon(CupertinoIcons.globe, color: inactiveIcon, size: 18),
+                    decoration: BoxDecoration(
+                      color: inactiveBg.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      CupertinoIcons.globe,
+                      color: inactiveIcon,
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -675,8 +1303,15 @@ class _NavBar extends StatelessWidget {
                   child: Container(
                     width: 45,
                     height: 45,
-                    decoration: BoxDecoration(color: inactiveBg.withValues(alpha: 0.5), shape: BoxShape.circle),
-                    child: Icon(PhosphorIcons.chartBarFill, color: inactiveIcon, size: 18),
+                    decoration: BoxDecoration(
+                      color: inactiveBg.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      PhosphorIcons.chartBarFill,
+                      color: inactiveIcon,
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -689,8 +1324,15 @@ class _NavBar extends StatelessWidget {
                   child: Container(
                     width: 45,
                     height: 45,
-                    decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.9), shape: BoxShape.circle),
-                    child: Icon(CupertinoIcons.plus, color: scheme.onPrimary, size: 18),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      CupertinoIcons.plus,
+                      color: scheme.onPrimary,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -700,307 +1342,6 @@ class _NavBar extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Alignment list tile ───────────────────────────────────────────────────────
-
-class _AlignmentTile extends StatefulWidget {
-  final Map<String, dynamic> alignment;
-  final bool isStarred;
-  final bool isAnalysing;
-  final bool isFailed;
-  final bool isDark;
-  final ColorScheme scheme;
-  final VoidCallback? onTap;
-  final VoidCallback? onRetry;
-  final int index;
-
-  const _AlignmentTile({
-    required this.alignment,
-    required this.isStarred,
-    required this.isAnalysing,
-    required this.isFailed,
-    required this.isDark,
-    required this.scheme,
-    required this.onTap,
-    required this.index,
-    this.onRetry,
-    super.key,
-  });
-
-  @override
-  State<_AlignmentTile> createState() => _AlignmentTileState();
-}
-
-class _AlignmentTileState extends State<_AlignmentTile>
-    with TickerProviderStateMixin {
-  late AnimationController _sweep;
-  late AnimationController _entry;
-  late Animation<double> _entryFade;
-  late Animation<Offset> _entrySlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _sweep = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
-    if (widget.isAnalysing) _sweep.repeat();
-
-    _entry = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-    _entryFade = CurvedAnimation(parent: _entry, curve: Curves.easeOut);
-    _entrySlide = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
-
-    final delay = widget.index.clamp(0, 5) * 40;
-    if (delay == 0) {
-      _entry.forward();
-    } else {
-      Future.delayed(Duration(milliseconds: delay), () {
-        if (mounted) _entry.forward();
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(_AlignmentTile old) {
-    super.didUpdateWidget(old);
-    if (widget.isAnalysing && !_sweep.isAnimating) {
-      _sweep.repeat();
-    } else if ((!widget.isAnalysing || widget.isFailed) && _sweep.isAnimating) {
-      _sweep.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _sweep.dispose();
-    _entry.dispose();
-    super.dispose();
-  }
-
-  static (IconData, Color, String) _typeConfig(
-          String type, ColorScheme scheme) =>
-      switch (type) {
-        'youtube' => (
-            CupertinoIcons.play_rectangle_fill,
-            const Color(0xFFFF3B30),
-            'YouTube'
-          ),
-        'reel' => (CupertinoIcons.film_fill, const Color(0xFFBF5AF2), 'Reel'),
-        _ => (CupertinoIcons.doc_text_fill, scheme.primary, 'Article'),
-      };
-
-  static String _domain(String url) {
-    try {
-      final h = Uri.parse(url).host.replaceAll('www.', '');
-      return h.isNotEmpty ? h : url;
-    } catch (_) {
-      return url.length > 30 ? '${url.substring(0, 30)}…' : url;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final url = widget.alignment['url'] as String? ?? '';
-    final title = widget.alignment['title'] as String?;
-    final contentType =
-        widget.alignment['content_type'] as String? ?? 'article';
-    final raw = widget.alignment['analyses'];
-    final analyses = raw is Map ? raw : {};
-    final count = analyses.values.where((v) => v != null).length;
-
-    final displayTitle =
-        (title != null && title.isNotEmpty) ? title : _domain(url);
-    final (icon, color, typeLabel) = _typeConfig(contentType, widget.scheme);
-    const failedRed = Color(0xFFFF3B30);
-
-    Widget tile = Tappable(
-      onTap: widget.onTap,
-      scaleOnPress: widget.onTap != null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: ShapeDecoration(
-          color: widget.isFailed
-              ? failedRed.withValues(alpha: widget.isDark ? 0.07 : 0.04)
-              : widget.isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.03),
-          shape: SmoothRectangleBorder(
-            borderRadius:
-                SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-            side: widget.isFailed
-                ? BorderSide(
-                    color: failedRed.withValues(alpha: 0.25), width: 0.7)
-                : BorderSide.none,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: widget.isFailed
-                    ? failedRed.withValues(alpha: widget.isDark ? 0.15 : 0.1)
-                    : color.withValues(alpha: widget.isDark ? 0.12 : 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                widget.isFailed ? CupertinoIcons.exclamationmark_circle : icon,
-                color: widget.isFailed ? failedRed : color,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: widget.scheme.onSurface.withValues(alpha: 0.85),
-                      height: 1.3,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  widget.isAnalysing
-                      ? Text(
-                          '$typeLabel · Analysing…',
-                          style: AppTypography.contentTypeLabel(color: widget.scheme.primary)
-                              .copyWith(fontStyle: FontStyle.italic),
-                        )
-                      : widget.isFailed
-                          ? Text(
-                              '$typeLabel · Analysis failed',
-                              style: AppTypography.contentTypeLabel(
-                                color: failedRed.withValues(alpha: 0.8),
-                              ),
-                            )
-                          : Text(
-                              '$typeLabel · $count ${count == 1 ? 'Analysis' : 'Analyses'}',
-                              style: AppTypography.contentTypeLabel(
-                                color: widget.isDark
-                                    ? Colors.white.withValues(alpha: 0.35)
-                                    : Colors.black.withValues(alpha: 0.35),
-                              ),
-                            ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (widget.isFailed && widget.onRetry != null)
-              Tappable(
-                onTap: widget.onRetry,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: failedRed.withValues(
-                        alpha: widget.isDark ? 0.15 : 0.1),
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.arrow_clockwise,
-                    size: 14,
-                    color: failedRed,
-                  ),
-                ),
-              )
-            else if (widget.isStarred)
-              const Icon(CupertinoIcons.star_fill,
-                  size: 11, color: Color(0xFFFF9F0A)),
-          ],
-        ),
-      ),
-    );
-
-    final Widget body = widget.isAnalysing
-        ? Stack(
-            children: [
-              tile,
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _sweep,
-                    builder: (_, __) => CustomPaint(
-                      painter: _SweepBorderPainter(
-                        progress: _sweep.value,
-                        color: widget.scheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          )
-        : tile;
-
-    return FadeTransition(
-      opacity: _entryFade,
-      child: SlideTransition(
-        position: _entrySlide,
-        child: body,
-      ),
-    );
-  }
-}
-
-// ── Rotating sweep border painter ────────────────────────────────────────────
-
-class _SweepBorderPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  const _SweepBorderPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const strokeWidth = 1.5;
-    final sweepAngle = 2 * pi * progress;
-    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-
-    final shader = SweepGradient(
-      center: FractionalOffset.center,
-      startAngle: sweepAngle,
-      endAngle: sweepAngle + 2 * pi,
-      colors: [
-        color.withAlpha(0),
-        color.withAlpha(200),
-        color,
-        color.withAlpha(200),
-        color.withAlpha(0),
-      ],
-      stops: const [0.0, 0.18, 0.5, 0.82, 1.0],
-    ).createShader(rect);
-
-    final paint = Paint()
-      ..shader = shader
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-
-    final path = SmoothRectangleBorder(
-      borderRadius:
-          SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-    ).getOuterPath(rect.deflate(strokeWidth / 2));
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_SweepBorderPainter old) => old.progress != progress;
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -1020,15 +1361,19 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 64, height: 64,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF2C2C2E)
                     : const Color(0xFFE5E5EA),
                 shape: BoxShape.circle,
               ),
-              child: Icon(CupertinoIcons.link,
-                  color: scheme.onSurfaceVariant, size: 26),
+              child: Icon(
+                CupertinoIcons.link,
+                color: scheme.onSurfaceVariant,
+                size: 26,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1039,7 +1384,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Tap + to analyse your first link',
               style: GoogleFonts.inter(
-                  fontSize: 14, color: scheme.onSurfaceVariant),
+                fontSize: 14,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -1052,91 +1399,109 @@ class _EmptyState extends StatelessWidget {
 
 class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   final Set<String> activeFilters;
-  final TextEditingController searchController;
   final ValueChanged<String> onToggle;
+  final VoidCallback onClear;
   final ColorScheme scheme;
   final bool isDark;
   final Color scaffoldBg;
+  final bool isScrolled;
 
   const _FilterBarDelegate({
     required this.activeFilters,
-    required this.searchController,
     required this.onToggle,
+    required this.onClear,
     required this.scheme,
     required this.isDark,
     required this.scaffoldBg,
+    required this.isScrolled,
   });
 
   @override
-  double get minExtent => 128;
+  double get minExtent => 58;
   @override
-  double get maxExtent => 128;
+  double get maxExtent => 58;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        boxShadow: overlapsContent
-            ? [
-                BoxShadow(
-                  color: Colors.black.withAlpha(isDark ? 55 : 22),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : const [],
-      ),
+      decoration: const BoxDecoration(),
       child: ClipRect(
         child: Stack(
           fit: StackFit.expand,
           children: [
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                color: scaffoldBg.withAlpha(isDark ? 110 : 150),
-              ),
+              child: Container(color: scaffoldBg.withAlpha(isDark ? 110 : 150)),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ── Search bar ─────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                  child: _SearchBar(
-                    controller: searchController,
-                    scheme: scheme,
-                    isDark: isDark,
-                  ),
-                ),
-                const SizedBox(height: 14),
                 // ── Filter chips ───────────────────────────────────────
                 SizedBox(
                   height: 34,
-                  child: ListView.separated(
+                  child: ListView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _kFilters.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (_, i) {
-                        final (key, label, chipColor, icon) = _kFilters[i];
+                    children: [
+                      // Filter chips
+                      ..._kFilters.map((f) {
+                        final (key, label, chipColor, icon) = f;
                         final active = activeFilters.contains(key);
                         final color = chipColor ?? scheme.primary;
-                        return _FilterChip(
-                          label: label,
-                          active: active,
-                          color: color,
-                          icon: icon,
-                          isDark: isDark,
-                          onTap: () => onToggle(key),
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _FilterChip(
+                            label: label,
+                            active: active,
+                            color: color,
+                            icon: icon,
+                            isDark: isDark,
+                            onTap: () => onToggle(key),
+                          ),
                         );
-                      },
-                    ),
+                      }),
+                      // Clear chip — only shown when filters are active
+                      if (activeFilters.isNotEmpty)
+                        Center(
+                          child: GestureDetector(
+                            onTap: onClear,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(50),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.14)
+                                      : Colors.black.withValues(alpha: 0.10),
+                                  width: 0.7,
+                                ),
+                              ),
+                              child: Text(
+                                'Clear',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
             Positioned(
               left: 0,
               right: 0,
@@ -1220,16 +1585,19 @@ class _FilterChipState extends State<_FilterChip>
     final scheme = Theme.of(context).colorScheme;
     final inactiveBorder = widget.isDark
         ? const Color(0xFF3A3A3C)
-        : Colors.grey.withValues(alpha: 0.25);
+        : const Color(0xFFD8D0C8).withValues(alpha: 0.6);
 
     return Tappable(
       onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _t,
-        builder: (_, __) {
+        builder: (_, _) {
           final v = _t.value;
-          final contentColor =
-              Color.lerp(scheme.onSurfaceVariant, Colors.white, v)!;
+          final contentColor = Color.lerp(
+            scheme.onSurfaceVariant,
+            Colors.white,
+            v,
+          )!;
           return Container(
             height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1239,7 +1607,10 @@ class _FilterChipState extends State<_FilterChip>
                 widget.color.withValues(alpha: 0.3),
                 v,
               ),
-              borderRadius: SmoothBorderRadius(cornerRadius: 50, cornerSmoothing: 0.6),
+              borderRadius: SmoothBorderRadius(
+                cornerRadius: 50,
+                cornerSmoothing: 0.6,
+              ),
               border: Border.all(
                 color: Color.lerp(inactiveBorder, widget.color, v)!,
                 width: 1,
@@ -1250,7 +1621,11 @@ class _FilterChipState extends State<_FilterChip>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (widget.icon != null) ...[
-                    Icon(widget.icon, size: 13, color: Color.lerp(widget.color, Colors.white, v)!),
+                    Icon(
+                      widget.icon,
+                      size: 13,
+                      color: Color.lerp(widget.color, Colors.white, v)!,
+                    ),
                     const SizedBox(width: 5),
                   ],
                   Text(
@@ -1281,191 +1656,27 @@ class _NoFilterResults extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.slash_circle,
-                color: scheme.onSurfaceVariant, size: 28),
+            Icon(
+              CupertinoIcons.slash_circle,
+              color: scheme.onSurfaceVariant,
+              size: 28,
+            ),
             const SizedBox(height: 12),
             Text(
               'No matching alignments',
-              style: AppTypography.navTitle(color: scheme.onSurface)
-                  .copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+              style: AppTypography.navTitle(
+                color: scheme.onSurface,
+              ).copyWith(fontSize: 15, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 4),
             Text(
               'Try adjusting your filters',
               style: GoogleFonts.inter(
-                  fontSize: 13, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Search bar ────────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatefulWidget {
-  final TextEditingController controller;
-  final ColorScheme scheme;
-  final bool isDark;
-
-  const _SearchBar({
-    required this.controller,
-    required this.scheme,
-    required this.isDark,
-  });
-
-  @override
-  State<_SearchBar> createState() => _SearchBarState();
-}
-
-class _SearchBarState extends State<_SearchBar> {
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(() => setState(() {}));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = widget.isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.black.withValues(alpha: 0.08);
-
-    return ClipSmoothRect(
-      radius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
-      child: Container(
-        height: 46,
-        decoration: ShapeDecoration(
-          color: widget.isDark
-              ? Colors.white.withValues(alpha: 0.07)
-              : Colors.black.withValues(alpha: 0.05),
-          shape: SmoothRectangleBorder(
-            borderRadius:
-                SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
-            side: BorderSide(color: borderColor, width: 0.6),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(width: 12),
-            Icon(
-              CupertinoIcons.search,
-              size: 16,
-              color: widget.scheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: TextField(
-                controller: widget.controller,
-                textAlignVertical: TextAlignVertical.center,
-                style: GoogleFonts.inter(
-                    fontSize: 14, color: widget.scheme.onSurface),
-                decoration: InputDecoration(
-                  hintText: 'Search alignments…',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color:
-                        widget.scheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false,
-                ),
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
               ),
             ),
-            if (widget.controller.text.isNotEmpty) ...[
-              GestureDetector(
-                onTap: widget.controller.clear,
-                child: Icon(
-                  CupertinoIcons.xmark_circle_fill,
-                  size: 15,
-                  color: widget.scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── No search results ─────────────────────────────────────────────────────────
-
-class _NoSearchResults extends StatelessWidget {
-  final ColorScheme scheme;
-  const _NoSearchResults({super.key, required this.scheme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(CupertinoIcons.search, color: scheme.onSurfaceVariant, size: 28),
-            const SizedBox(height: 12),
-            Text(
-              'No alignments found',
-              style: AppTypography.navTitle(color: scheme.onSurface)
-                  .copyWith(fontSize: 15, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Try a different search term',
-              style: GoogleFonts.inter(
-                  fontSize: 13, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Delete background ─────────────────────────────────────────────────────────
-
-class _DeleteBackground extends StatelessWidget {
-  const _DeleteBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: ShapeDecoration(
-            color: Colors.redAccent,
-            shape: SmoothRectangleBorder(
-              borderRadius:
-                  SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(CupertinoIcons.trash_fill,
-                  color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Delete',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -1489,7 +1700,8 @@ class _Avatar extends StatelessWidget {
         border: Border.all(color: primary, width: 2),
       ),
       child: Container(
-        width: 28, height: 28,
+        width: 28,
+        height: 28,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
@@ -1499,7 +1711,11 @@ class _Avatar extends StatelessWidget {
           ),
         ),
         child: const Center(
-          child: Icon(CupertinoIcons.person_fill, size: 14, color: Colors.white),
+          child: Icon(
+            CupertinoIcons.person_fill,
+            size: 14,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -1511,7 +1727,6 @@ class _Avatar extends StatelessWidget {
 // Fixed 3D slot transforms: [rotateY, translateX, translateY, translateZ, scale, opacity]
 // ── Featured card ─────────────────────────────────────────────────────────────
 
-
 class SlantedCardClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -1521,35 +1736,18 @@ class SlantedCardClipper extends CustomClipper<Path> {
 
     final path = Path()
       ..moveTo(radius, 0)
-
-    // top edge
+      // top edge
       ..lineTo(size.width - inset, slope)
-
-    // right edge
+      // right edge
       ..lineTo(size.width - inset, size.height - slope)
-
-    // bottom edge
+      // bottom edge
       ..lineTo(radius, size.height)
-
-    // bottom-left rounded corner
-      ..quadraticBezierTo(
-        0,
-        size.height,
-        0,
-        size.height - radius,
-      )
-
-    // left edge
+      // bottom-left rounded corner
+      ..quadraticBezierTo(0, size.height, 0, size.height - radius)
+      // left edge
       ..lineTo(0, radius)
-
-    // top-left rounded corner
-      ..quadraticBezierTo(
-        0,
-        0,
-        radius,
-        0,
-      )
-
+      // top-left rounded corner
+      ..quadraticBezierTo(0, 0, radius, 0)
       ..close();
 
     return path;
@@ -1571,19 +1769,9 @@ class SlantedBorderPainter extends CustomPainter {
       ..lineTo(size.width - inset, slope)
       ..lineTo(size.width - inset, size.height - slope)
       ..lineTo(radius, size.height)
-      ..quadraticBezierTo(
-        0,
-        size.height,
-        0,
-        size.height - radius,
-      )
+      ..quadraticBezierTo(0, size.height, 0, size.height - radius)
       ..lineTo(0, radius)
-      ..quadraticBezierTo(
-        0,
-        0,
-        radius,
-        0,
-      )
+      ..quadraticBezierTo(0, 0, radius, 0)
       ..close();
 
     final paint = Paint()
@@ -1598,20 +1786,26 @@ class SlantedBorderPainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-
 class _FeaturedCard extends StatelessWidget {
   final Map<String, dynamic> alignment;
   final bool isStarred;
   final bool isDark;
   final ColorScheme scheme;
+  final double widthFactor;
+  final double cardHeight;
+  final double horizontalMargin;
+  final double dimAmount;
   final VoidCallback onTap;
-
   const _FeaturedCard({
     required this.alignment,
     required this.isStarred,
     required this.isDark,
     required this.scheme,
     required this.onTap,
+    this.widthFactor = 0.65,
+    this.cardHeight = 200,
+    this.horizontalMargin = 28,
+    this.dimAmount = 0,
   });
 
   static String _relativeTime(String? iso) {
@@ -1638,229 +1832,216 @@ class _FeaturedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.65;
-    const cardHeight = 200.0;
+    final cardWidth = screenWidth * widthFactor;
 
     final url = alignment['url'] as String? ?? '';
     final title = alignment['title'] as String?;
     final contentType = alignment['content_type'] as String? ?? 'article';
-    final thumbnailUrl = alignment['thumbnail'] as String?;
     final createdAt = alignment['created_at'] as String?;
     final raw = alignment['analyses'];
     final analyses = raw is Map ? raw : {};
     final count = analyses.values.where((v) => v != null).length;
     final isAnalysing = alignment['is_analyzing'] == true;
     final isFailed = alignment['status'] == 'failed';
-    final displayTitle = (title != null && title.isNotEmpty) ? title : _domain(url);
+    final displayTitle = (title != null && title.isNotEmpty)
+        ? title
+        : _domain(url);
 
-    final (IconData typeIcon, Color typeColor, String typeLabel) = switch (contentType) {
-      'youtube' => (CupertinoIcons.play_rectangle_fill, const Color(0xFFFF3B30), 'YouTube'),
-      'reel'    => (CupertinoIcons.film_fill, const Color(0xFFBF5AF2), 'Reel'),
-      _         => (CupertinoIcons.doc_text_fill, scheme.primary, 'Article'),
+    final (
+      IconData typeIcon,
+      Color typeColor,
+      String typeLabel,
+    ) = switch (contentType) {
+      'youtube' => (
+        CupertinoIcons.play_rectangle_fill,
+        const Color(0xFFFF3B30),
+        'YouTube',
+      ),
+      'reel' => (CupertinoIcons.film_fill, const Color(0xFFBF5AF2), 'Reel'),
+      _ => (CupertinoIcons.doc_text_fill, scheme.primary, 'Article'),
     };
     const failedRed = Color(0xFFFF3B30);
     final effectiveTypeColor = isFailed ? failedRed : typeColor;
+    final cardRadius = SmoothBorderRadius(
+      cornerRadius: 22,
+      cornerSmoothing: 0.6,
+    );
 
-    return GestureDetector(
-      onTap: isFailed ? null : onTap,
-      child: Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.skewY(-0.35),
-        child: Container(
-          width: cardWidth,
-          height: cardHeight,
-          margin: const EdgeInsets.symmetric(
-            horizontal: 28,
-            vertical: 18,
+    Widget cardBody() => Container(
+      width: cardWidth,
+      height: cardHeight,
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 18),
+      decoration: ShapeDecoration(
+        shadows: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.40),
+            blurRadius: 32,
+            spreadRadius: 0,
+            offset: const Offset(0, 14),
           ),
-          decoration: ShapeDecoration(
-            shadows: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.40),
-                blurRadius: 32,
-                spreadRadius: 0,
-                offset: const Offset(0, 14),
-              ),
-            ],
-            shape: SmoothRectangleBorder(
-              borderRadius: SmoothBorderRadius(
-                cornerRadius: 22,
-                cornerSmoothing: 0.6,
-              ),
-            ),
-          ),
-          child: ClipSmoothRect(
-            radius: SmoothBorderRadius(
-              cornerRadius: 22,
-              cornerSmoothing: 0.6,
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
-                  Positioned.fill(
-                    child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(
-                        sigmaX: 20,
-                        sigmaY: 20,
-                      ),
-                      child: Image.network(
-                        thumbnailUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                        const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: 12,
-                      sigmaY: 12,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                      ),
+        ],
+        shape: SmoothRectangleBorder(borderRadius: cardRadius),
+      ),
+      child: ClipSmoothRect(
+        radius: cardRadius,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: ShapeDecoration(
+                  color: isDark ? const Color(0xFF1E1E20) : Colors.white,
+                  shape: SmoothRectangleBorder(
+                    borderRadius: cardRadius,
+                    side: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.07),
                     ),
                   ),
                 ),
-
-                Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: effectiveTypeColor.withValues(alpha: 0.18),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isFailed
-                                  ? CupertinoIcons.exclamationmark_circle
-                                  : typeIcon,
-                              color: effectiveTypeColor,
-                              size: 14,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isStarred) ...[
-                            const Icon(
-                              CupertinoIcons.star_fill,
-                              size: 12,
-                              color: Color(0xFFFF9F0A),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
-                            _relativeTime(createdAt),
-                            style: AppTypography.dataSmall(
-                              color: Colors.white.withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const Spacer(),
-
-                      Text(
-                        displayTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.heading2(
-                          color: Colors.white,
-                        ).copyWith(
-                          fontSize: 18,
-                          height: 1.25,
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: effectiveTypeColor.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isFailed
+                              ? CupertinoIcons.exclamationmark_circle
+                              : typeIcon,
+                          color: effectiveTypeColor,
+                          size: 14,
                         ),
                       ),
-
-                      const SizedBox(height: 10),
-
-                      Row(
-                        children: [
-                          if (isAnalysing)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: scheme.primary.withValues(alpha: 0.25),
-                                borderRadius:
-                                BorderRadius.circular(50),
-                              ),
-                              child: Text(
-                                'Analysing…',
-                                style: AppTypography.dataSmall(
-                                  color: scheme.primary,
-                                ).copyWith(
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            )
-                          else if (isFailed)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: failedRed.withValues(alpha: 0.2),
-                                borderRadius:
-                                BorderRadius.circular(50),
-                              ),
-                              child: Text(
-                                'Failed',
-                                style: AppTypography.dataSmall(
-                                  color: failedRed,
-                                ),
-                              ),
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius:
-                                BorderRadius.circular(50),
-                              ),
-                              child: Text(
-                                '$count ${count == 1 ? 'Analysis' : 'Analyses'}',
-                                style: AppTypography.dataSmall(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ),
-
-                          const SizedBox(width: 8),
-
-                          Text(
-                            typeLabel,
-                            style: AppTypography.contentTypeLabel(
-                              color: Colors.white.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ],
+                      const Spacer(),
+                      if (isStarred) ...[
+                        const Icon(CupertinoIcons.star_fill, size: 12, color: Color(0xFFFF9F0A)),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        _relativeTime(createdAt),
+                        style: AppTypography.dataSmall(color: scheme.onSurface.withValues(alpha: 0.50)),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const Spacer(),
+                  Text(
+                    displayTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2(color: scheme.onSurface).copyWith(fontSize: 15.5, height: 1.2),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      if (isAnalysing)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(50)),
+                          child: Text('Analysing…', style: AppTypography.dataSmall(color: scheme.primary).copyWith(fontStyle: FontStyle.italic)),
+                        )
+                      else if (isFailed)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: failedRed.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(50)),
+                          child: Text('Failed', style: AppTypography.dataSmall(color: failedRed)),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: scheme.onSurface.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(50)),
+                          child: Text('$count ${count == 1 ? 'Analysis' : 'Analyses'}', style: AppTypography.dataSmall(color: scheme.onSurface.withValues(alpha: 0.75))),
+                        ),
+                      const SizedBox(width: 8),
+                      Text(typeLabel, style: AppTypography.contentTypeLabel(color: scheme.onSurface.withValues(alpha: 0.45))),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+            if (dimAmount > 0)
+              Positioned.fill(
+                child: IgnorePointer(child: Container(color: Colors.black.withValues(alpha: dimAmount))),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    return _TappableCard(
+      onTap: isFailed ? null : onTap,
+      cardBody: cardBody,
+    );
+  }
+}
+
+/// Handles tap press feedback (scale + opacity) then calls [onTap].
+class _TappableCard extends StatefulWidget {
+  final VoidCallback? onTap;
+  final Widget Function() cardBody;
+
+  const _TappableCard({required this.onTap, required this.cardBody});
+
+  @override
+  State<_TappableCard> createState() => _TappableCardState();
+}
+
+class _TappableCardState extends State<_TappableCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _press;
+  late final Animation<double> _scale;
+  @override
+  void initState() {
+    super.initState();
+    _press = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scale = Tween(begin: 1.0, end: 0.93).animate(CurvedAnimation(parent: _press, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _press.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(_) {
+    if (widget.onTap != null) {
+      HapticFeedback.lightImpact();
+      _press.forward();
+    }
+  }
+  void _onTapUp(_) {
+    _press.reverse().then((_) {
+      if (!mounted) return;
+      widget.onTap?.call();
+    });
+  }
+  void _onCancel() { _press.reverse(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onCancel,
+      behavior: HitTestBehavior.deferToChild,
+      child: AnimatedBuilder(
+        animation: _press,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.skewY(-0.35),
+          child: widget.cardBody(),
         ),
       ),
     );

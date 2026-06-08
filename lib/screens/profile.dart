@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:figma_squircle/figma_squircle.dart';
@@ -6,9 +5,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_typography.dart';
@@ -30,11 +26,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _screenshotCtrl = ScreenshotController();
   final _scrollCtrl = ScrollController();
   String _firstName = '';
   String _memberSince = '';
-  bool _sharing = false;
   bool _showFloatingBack = false;
   double _topPad = 0;
 
@@ -111,22 +105,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return streak;
   }
 
-  Future<void> _shareCard() async {
-    if (_sharing) return;
-    setState(() => _sharing = true);
-    try {
-      final bytes = await _screenshotCtrl.capture(pixelRatio: 3.0);
-      if (bytes == null) return;
-      final dir  = await getTemporaryDirectory();
-      final file = File('${dir.path}/align_card.png');
-      await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)]);
-    } catch (e) {
-      debugPrint('Share error: $e');
-    } finally {
-      if (mounted) setState(() => _sharing = false);
-    }
-  }
 
   @override
   void dispose() {
@@ -178,91 +156,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 24),
 
                         // ── User card ─────────────────────────────────────
-                        Screenshot(
-                          controller: _screenshotCtrl,
-                          child: UserCard(
-                            firstName:      _firstName,
-                            memberSince:    _memberSince,
-                            analysisCount:  count,
-                            streak:         streak,
-                            milestoneTitle: current.title,
-                            isDark:         isDark,
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Share button ──────────────────────────────────
-                        Center(
-                          child: Tappable(
-                            onTap: _sharing ? null : _shareCard,
-                            scaleOnPress: true,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22, vertical: 11),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(100),
-                                color: scheme.primary.withAlpha(isDark ? 22 : 14),
-                                border: Border.all(
-                                  color: scheme.primary.withAlpha(isDark ? 55 : 40),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _sharing
-                                      ? SizedBox(
-                                          width: 13, height: 13,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 1.5,
-                                            color: scheme.primary,
-                                          ),
-                                        )
-                                      : Icon(
-                                          CupertinoIcons.share,
-                                          size: 14,
-                                          color: scheme.primary,
-                                        ),
-                                  const SizedBox(width: 7),
-                                  Text(
-                                    'Share Card',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        UserCard(
+                          firstName:      _firstName,
+                          memberSince:    _memberSince,
+                          analysisCount:  count,
+                          streak:         streak,
+                          milestoneTitle: current.title,
+                          isDark:         isDark,
                         ),
 
                         const SizedBox(height: 28),
 
-                        // ── Milestone badge + progress ────────────────────
-                        _MilestoneSection(
-                          current: current,
-                          next:    next,
-                          count:   count,
-                          scheme:  scheme,
-                          isDark:  isDark,
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Settings label ────────────────────────────────
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 10),
-                          child: Text(
-                            'Settings',
-                            style: AppTypography.sectionHeader(color: scheme.onSurfaceVariant),
-                          ),
-                        ),
-
-                        // ── Settings group ────────────────────────────────
+                        // ── Theme switcher ────────────────────────────────
                         Container(
+                          width: double.infinity,
                           decoration: ShapeDecoration(
                             color: isDark
                                 ? const Color(0xFF1C1C1E)
@@ -274,23 +181,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              _SettingsRow(
-                                icon: CupertinoIcons.info_circle_fill,
-                                label: 'About App',
-                                onTap: () {},
-                              ),
-                              _Divider(),
-                              _SettingsRow(
-                                icon: CupertinoIcons.person_crop_circle_fill,
-                                label: 'About Developer',
-                                onTap: () {},
-                              ),
-                              _Divider(),
-                              _ThemeRow(),
-                            ],
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: Center(child: _PullCordThemeSwitcher(isDark: isDark)),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // ── Milestone badge + progress ────────────────────
+                        _MilestoneSection(
+                          current: current,
+                          next:    next,
+                          count:   count,
+                          scheme:  scheme,
+                          isDark:  isDark,
                         ),
 
                         const SizedBox(height: 32),
@@ -854,4 +757,174 @@ class _Divider extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Pull-cord theme switcher ───────────────────────────────────────────────────
+class _PullCordThemeSwitcher extends StatefulWidget {
+  final bool isDark;
+  const _PullCordThemeSwitcher({required this.isDark});
+
+  @override
+  State<_PullCordThemeSwitcher> createState() => _PullCordThemeSwitcherState();
+}
+
+class _PullCordThemeSwitcherState extends State<_PullCordThemeSwitcher>
+    with SingleTickerProviderStateMixin {
+  static const double _cordHeight = 80.0;
+  static const double _triggerDistance = 60.0;
+  static const double _maxPull = 100.0;
+
+  double _pull = 0.0;
+  bool _triggered = false;
+  late AnimationController _snapCtrl;
+  late Animation<double> _snapAnim;
+  double _snapFrom = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _snapCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _snapAnim = CurvedAnimation(parent: _snapCtrl, curve: Curves.elasticOut);
+    _snapCtrl.addListener(() {
+      setState(() => _pull = _snapFrom * (1 - _snapAnim.value));
+    });
+  }
+
+  @override
+  void dispose() {
+    _snapCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onPanUpdate(DragUpdateDetails d) {
+    if (_snapCtrl.isAnimating) return;
+    setState(() {
+      _pull = (_pull + d.delta.dy).clamp(0.0, _maxPull);
+    });
+  }
+
+  void _onPanEnd(DragEndDetails _) {
+    if (_pull >= _triggerDistance && !_triggered) {
+      _triggered = true;
+      final newMode = widget.isDark ? ThemeMode.light : ThemeMode.dark;
+      themeNotifier.value = newMode;
+      saveTheme(newMode);
+    }
+    _snapFrom = _pull;
+    _snapCtrl.forward(from: 0);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _triggered = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final progress = (_pull / _triggerDistance).clamp(0.0, 1.0);
+
+    // Ball color: blue-white in dark, golden-yellow in light
+    final ballColor = isDark
+        ? Color.lerp(const Color(0xFFB8D4FF), const Color(0xFFFFD060), progress)!
+        : Color.lerp(const Color(0xFFFFD060), const Color(0xFFFFAA00), progress)!;
+
+    final glowColor = isDark
+        ? Color.lerp(const Color(0xFF6EA8FF), const Color(0xFFFFD060), progress)!
+        : Color.lerp(const Color(0xFFFFD060), const Color(0xFFFF9500), progress)!;
+
+    final glowRadius = isDark
+        ? lerpDouble(18.0, 48.0, progress)!
+        : lerpDouble(28.0, 56.0, progress)!;
+
+    final cordColor = isDark
+        ? Colors.white.withValues(alpha: 0.25)
+        : Colors.black.withValues(alpha: 0.18);
+
+    return Column(
+      children: [
+        GestureDetector(
+          onVerticalDragUpdate: _onPanUpdate,
+          onVerticalDragEnd: _onPanEnd,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: 80,
+            height: _cordHeight + _pull + 36,
+            child: CustomPaint(
+              painter: _CordPainter(
+                pull: _pull,
+                cordHeight: _cordHeight,
+                cordColor: cordColor,
+                ballColor: ballColor,
+                glowColor: glowColor,
+                glowRadius: glowRadius,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          isDark ? 'Pull down for light mode' : 'Pull down for dark mode',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.35)
+                : Colors.black.withValues(alpha: 0.35),
+            decoration: TextDecoration.none,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CordPainter extends CustomPainter {
+  final double pull;
+  final double cordHeight;
+  final Color cordColor;
+  final Color ballColor;
+  final Color glowColor;
+  final double glowRadius;
+
+  const _CordPainter({
+    required this.pull,
+    required this.cordHeight,
+    required this.cordColor,
+    required this.ballColor,
+    required this.glowColor,
+    required this.glowRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cordEnd = cordHeight + pull;
+    final ballCenter = Offset(cx, cordEnd + 12);
+
+    // Cord
+    final cordPaint = Paint()
+      ..color = cordColor
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx, 0), Offset(cx, cordEnd), cordPaint);
+
+    // Glow
+    final glowPaint = Paint()
+      ..color = glowColor.withValues(alpha: 0.35)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius);
+    canvas.drawCircle(ballCenter, 14, glowPaint);
+
+    // Ball
+    final ballPaint = Paint()..color = ballColor;
+    canvas.drawCircle(ballCenter, 12, ballPaint);
+  }
+
+  @override
+  bool shouldRepaint(_CordPainter old) =>
+      old.pull != pull ||
+      old.ballColor != ballColor ||
+      old.glowColor != glowColor ||
+      old.glowRadius != glowRadius;
 }

@@ -33,3 +33,7 @@ final starredNotifier = ValueNotifier<Set<String>>({});
 // ── Alignments list ───────────────────────────────────────────────────────────
 
 final alignmentsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+
+// ── Detail page blur (0.0 = no blur, 1.0 = full blur) ────────────────────────
+// Updated by AlignmentDetailScreen; home page listens and blurs its content.
+final detailBlurNotifier = ValueNotifier<double>(0.0);

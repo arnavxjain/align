@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -127,7 +128,17 @@ class _InsightsState extends State<InsightsScreen> {
                   hasScrollBody: false,
                   child: _EmptyState(scheme: scheme),
                 )
-              else
+              else ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                    child: _InsightsHeatmap(
+                      alignments: alignments,
+                      isDark: isDark,
+                      scheme: scheme,
+                    ),
+                  ),
+                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
@@ -138,6 +149,7 @@ class _InsightsState extends State<InsightsScreen> {
                     ),
                   ),
                 ),
+              ],
             ],
           );
         },
@@ -777,6 +789,222 @@ class _EmptyState extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Activity heatmap ──────────────────────────────────────────────────────────
+
+class _InsightsHeatmap extends StatefulWidget {
+  final List<Map<String, dynamic>> alignments;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  const _InsightsHeatmap({
+    required this.alignments,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  @override
+  State<_InsightsHeatmap> createState() => _InsightsHeatmapState();
+}
+
+class _InsightsHeatmapState extends State<_InsightsHeatmap> {
+  static const _weeks = 16;
+  static const _gap   = 3.0;
+
+  int?      _tipCol;
+  DateTime? _tipDate;
+  int       _tipCount = 0;
+  Timer?    _tipTimer;
+
+  @override
+  void dispose() {
+    _tipTimer?.cancel();
+    super.dispose();
+  }
+
+  Map<DateTime, int> _buildDayMap() {
+    final map = <DateTime, int>{};
+    for (final a in widget.alignments) {
+      if (a['is_analyzing'] == true || a['status'] == 'failed') continue;
+      final raw = a['created_at'] as String?;
+      if (raw == null) continue;
+      final dt = DateTime.tryParse(raw)?.toLocal();
+      if (dt == null) continue;
+      final day = DateTime(dt.year, dt.month, dt.day);
+      map[day] = (map[day] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  Color _cellColor(int count) {
+    if (widget.isDark) {
+      if (count == 0) return Colors.white.withValues(alpha: 0.06);
+      if (count == 1) return const Color(0xFF1a3a5c);
+      if (count <= 3) return const Color(0xFF1e6bb8);
+      if (count <= 5) return const Color(0xFF2188ff);
+      return const Color(0xFF79c0ff);
+    } else {
+      if (count == 0) return Colors.black.withValues(alpha: 0.07);
+      if (count == 1) return const Color(0xFFBBDEFB);
+      if (count <= 3) return const Color(0xFF64B5F6);
+      if (count <= 5) return const Color(0xFF1E88E5);
+      return const Color(0xFF0D47A1);
+    }
+  }
+
+  void _showTip(int col, DateTime date, int count) {
+    _tipTimer?.cancel();
+    setState(() { _tipCol = col; _tipDate = date; _tipCount = count; });
+    _tipTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _tipCol = null);
+    });
+  }
+
+  static String _mon(int m) => const [
+    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ][m];
+
+  @override
+  Widget build(BuildContext context) {
+    final now      = DateTime.now();
+    final today    = DateTime(now.year, now.month, now.day);
+    final todayRow = today.weekday - 1;
+    final dayMap   = _buildDayMap();
+
+    final legendColors = widget.isDark
+        ? const [Color(0x0FFFFFFF), Color(0xFF1a3a5c), Color(0xFF1e6bb8), Color(0xFF2188ff), Color(0xFF79c0ff)]
+        : const [Color(0x12000000), Color(0xFFBBDEFB), Color(0xFF64B5F6), Color(0xFF1E88E5), Color(0xFF0D47A1)];
+    final mutedText = widget.scheme.onSurfaceVariant.withValues(alpha: 0.45);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: LayoutBuilder(builder: (_, constraints) {
+        final step     = (constraints.maxWidth + _gap) / _weeks;
+        final cellSize = step - _gap;
+        final gridW    = constraints.maxWidth;
+        final gridH    = 7 * step - _gap;
+
+        // Month labels
+        final monthLabels = <Widget>[];
+        String? lastLbl;
+        for (int col = 0; col < _weeks; col++) {
+          final daysBack = ((_weeks - 1) - col) * 7 + todayRow;
+          final monday   = today.subtract(Duration(days: daysBack));
+          final lbl      = _mon(monday.month);
+          if (lbl != lastLbl) {
+            lastLbl = lbl;
+            monthLabels.add(Positioned(
+              left: col * step, top: 0,
+              child: Text(lbl, style: GoogleFonts.inter(
+                fontSize: 9,
+                color: widget.scheme.onSurfaceVariant.withValues(alpha: 0.45),
+              )),
+            ));
+          }
+        }
+
+        // Grid cells
+        final cells = <Widget>[];
+        for (int col = 0; col < _weeks; col++) {
+          for (int row = 0; row < 7; row++) {
+            final daysBack = ((_weeks - 1) - col) * 7 + (todayRow - row);
+            final isFuture = daysBack < 0;
+            final date     = today.subtract(Duration(days: daysBack));
+            final count    = isFuture ? 0 : (dayMap[date] ?? 0);
+
+            cells.add(Positioned(
+              left: col * step, top: row * step,
+              child: GestureDetector(
+                onTap: isFuture ? null : () => _showTip(col, date, count),
+                child: Container(
+                  width: cellSize, height: cellSize,
+                  decoration: BoxDecoration(
+                    color: isFuture ? Colors.transparent : _cellColor(count),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ));
+          }
+        }
+
+        // Tooltip
+        Widget? tooltip;
+        if (_tipCol != null && _tipDate != null) {
+          final d   = _tipDate!;
+          final lbl = _tipCount == 0
+              ? 'No analyses · ${_mon(d.month)} ${d.day}'
+              : '$_tipCount ${_tipCount == 1 ? 'analysis' : 'analyses'} · ${_mon(d.month)} ${d.day}';
+          const tipW    = 150.0;
+          final rawLeft = _tipCol! * step + cellSize / 2 - tipW / 2;
+          final tipLeft = rawLeft.clamp(0.0, gridW - tipW);
+
+          tooltip = Positioned(
+            left: tipLeft, bottom: gridH + 6,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  width: tipW,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.isDark
+                        ? Colors.white.withValues(alpha: 0.13)
+                        : Colors.black.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: widget.isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.black.withValues(alpha: 0.09),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(lbl,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 11, fontWeight: FontWeight.w500,
+                      color: widget.isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    )),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: gridW, height: 14, child: Stack(children: monthLabels)),
+            const SizedBox(height: 3),
+            SizedBox(
+              width: gridW, height: gridH,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [...cells, if (tooltip != null) tooltip],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text('Less', style: GoogleFonts.inter(fontSize: 9, color: mutedText)),
+                const SizedBox(width: 4),
+                ...legendColors.map((c) => Container(
+                  width: cellSize, height: cellSize,
+                  margin: const EdgeInsets.only(left: 2),
+                  decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
+                )),
+                const SizedBox(width: 4),
+                Text('More', style: GoogleFonts.inter(fontSize: 9, color: mutedText)),
+              ],
+            ),
+          ],
+        );
+      }),
     );
   }
 }

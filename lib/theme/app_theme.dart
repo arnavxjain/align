@@ -78,7 +78,7 @@ class AppTheme {
   static ThemeData dark([Color primary = const Color(0xFF0A84FF)]) {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFF171719),
+      scaffoldBackgroundColor: const Color(0xFF111111),
       colorScheme: base.colorScheme.copyWith(
         primary: primary,
         onPrimary: Colors.white,

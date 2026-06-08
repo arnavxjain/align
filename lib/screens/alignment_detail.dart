@@ -22,7 +22,8 @@ class AlignmentDetailScreen extends StatefulWidget {
   State<AlignmentDetailScreen> createState() => _AlignmentDetailScreenState();
 }
 
-class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
+class _AlignmentDetailScreenState extends State<AlignmentDetailScreen>
+    with SingleTickerProviderStateMixin {
   String _statusMessage = 'Analysing…';
   double _progress = 0.0;
   bool _isAnalysing = false;
@@ -30,11 +31,26 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
   // instance) — we can't get live progress, so show indeterminate bar.
   bool _watchingBackground = false;
 
+  // Drag-to-dismiss state
+  Offset _drag = Offset.zero;
+  late final AnimationController _snapCtrl;
+
   @override
   void initState() {
     super.initState();
-    final alignment = alignmentsNotifier.value
-        .firstWhere((e) => e['id'] == widget.alignmentId, orElse: () => {});
+    _snapCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    // Fade blur in as the page enters.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      detailBlurNotifier.value = 1.0;
+    });
+
+    final alignment = alignmentsNotifier.value.firstWhere(
+      (e) => e['id'] == widget.alignmentId,
+      orElse: () => {},
+    );
     if (alignment['is_analyzing'] == true) {
       _isAnalysing = true;
       if (!AnalysisService.isRunning(widget.alignmentId)) {
@@ -47,22 +63,94 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
   }
 
   void _onNotifierUpdate() {
-    final alignment = alignmentsNotifier.value
-        .firstWhere((e) => e['id'] == widget.alignmentId, orElse: () => {});
+    final alignment = alignmentsNotifier.value.firstWhere(
+      (e) => e['id'] == widget.alignmentId,
+      orElse: () => {},
+    );
     if (alignment.isEmpty || alignment['is_analyzing'] != true) {
       alignmentsNotifier.removeListener(_onNotifierUpdate);
-      if (mounted) setState(() { _isAnalysing = false; _watchingBackground = false; });
+      if (mounted)
+        setState(() {
+          _isAnalysing = false;
+          _watchingBackground = false;
+        });
     }
   }
 
   @override
   void dispose() {
-    if (_watchingBackground) alignmentsNotifier.removeListener(_onNotifierUpdate);
+    if (_watchingBackground)
+      alignmentsNotifier.removeListener(_onNotifierUpdate);
+    _snapCtrl.dispose();
+    detailBlurNotifier.value = 0.0;
     super.dispose();
   }
 
+  void _onPanUpdate(DragUpdateDetails d) {
+    if (!mounted) return;
+    setState(() => _drag += d.delta);
+    final screenH = MediaQuery.of(context).size.height;
+    final dragFraction = (_drag.dy / screenH).clamp(0.0, 1.0);
+    detailBlurNotifier.value = (1.0 - dragFraction * 1.4).clamp(0.0, 1.0);
+  }
+
+  void _onPanEnd(DragEndDetails d) {
+    if (!mounted) return;
+    final screenH = MediaQuery.of(context).size.height;
+    final vy = d.velocity.pixelsPerSecond.dy;
+    final start = _drag;
+
+    // Dismiss if dragged past 50% OR flung downward fast enough.
+    final shouldDismiss = start.dy > screenH * 0.5 || vy > 800;
+
+    _snapCtrl.stop();
+    _snapCtrl.reset();
+
+    if (shouldDismiss) {
+      // How far left to travel off-screen; use velocity to set duration.
+      final remaining = (screenH - start.dy).clamp(0.0, screenH);
+      final ms = vy > 0 ? (remaining / vy * 1000).clamp(120.0, 280.0) : 220.0;
+      _snapCtrl.duration = Duration(milliseconds: ms.round());
+
+      final blurStart = detailBlurNotifier.value;
+      void listener() {
+        if (!mounted) return;
+        final t = Curves.easeIn.transform(_snapCtrl.value);
+        setState(() => _drag = Offset(start.dx, start.dy + remaining * t));
+        detailBlurNotifier.value = (blurStart * (1.0 - t)).clamp(0.0, 1.0);
+      }
+
+      _snapCtrl.addListener(listener);
+      _snapCtrl.forward().then((_) {
+        _snapCtrl.removeListener(listener);
+        if (mounted) Navigator.maybePop(context);
+      });
+    } else {
+      // Spring back to origin — faster when closer, honour reverse velocity.
+      final dist = start.distance;
+      final ms = (dist * 0.55).clamp(180.0, 340.0);
+      _snapCtrl.duration = Duration(milliseconds: ms.round());
+
+      final blurStart = detailBlurNotifier.value;
+      void listener() {
+        if (!mounted) return;
+        final t = Curves.easeOutCubic.transform(_snapCtrl.value);
+        setState(() => _drag = start * (1.0 - t));
+        detailBlurNotifier.value = blurStart + (1.0 - blurStart) * t;
+      }
+
+      _snapCtrl.addListener(listener);
+      _snapCtrl.forward().then((_) => _snapCtrl.removeListener(listener));
+    }
+  }
+
   Future<void> _doAnalysis(Map<String, dynamic> entry) async {
-    if (mounted) setState(() { _isAnalysing = true; _progress = 0; _statusMessage = 'Analysing…'; });
+    if (mounted)
+      setState(() {
+        _isAnalysing = true;
+        _progress = 0;
+        _statusMessage = 'Analysing…';
+      });
     try {
       await AnalysisService.runAnalysis(
         pendingEntry: entry,
@@ -80,8 +168,8 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
       final msg = e is ReelDownloadException
           ? e.message
           : (e.toString().toLowerCase().contains('reel')
-              ? "Couldn't download this reel — make sure the link is public."
-              : 'Analysis failed. Please try again.');
+                ? "Couldn't download this reel — make sure the link is public."
+                : 'Analysis failed. Please try again.');
       await showErrorModal(
         context,
         title: 'Analysis Failed',
@@ -109,7 +197,9 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
   static List<Map<String, dynamic>> _asList(dynamic value) {
     if (value is! List) return [];
     return value
-        .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+        .map(
+          (e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+        )
         .toList();
   }
 
@@ -131,8 +221,9 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
         final contentType = alignment['content_type'] as String? ?? 'article';
         final createdAt = alignment['created_at'] as String? ?? '';
         final raw = alignment['analyses'];
-        final analyses =
-            raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+        final analyses = raw is Map
+            ? Map<String, dynamic>.from(raw)
+            : <String, dynamic>{};
 
         final realismCheck = _asList(analyses['realism_check']);
         final products = _asList(analyses['products']);
@@ -141,308 +232,535 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen> {
 
         final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
 
+        // Height of the fixed handle bar (safe area top + pill height + padding).
+        final topPad = MediaQuery.of(context).padding.top;
+        const handleBarHeight = 56.0;
+        // Extra tail extends the blur further into the page content below the bar.
+        const blurTail = 56.0;
+        final handleTotalHeight = topPad + handleBarHeight + blurTail - 120;
+        final frostedTotalHeight = handleTotalHeight + 128;
+
+        final screenH = MediaQuery.of(context).size.height;
+        // Scale the sheet down as it's dragged — mimics iOS sheet shrink.
+        final dragFraction = (_drag.dy / screenH).clamp(0.0, 1.0);
+        final sheetScale = 1.0 - dragFraction * 0.12;
+        final cornerRadius = 36.0 + dragFraction * 10.0;
+
         return Scaffold(
-          body: SafeArea(
-            bottom: false,
-            top: false,
-            child: Stack(
-              children: [
-                CustomScrollView(
-              slivers: [
-                // ── Pinned blurred header ────────────────────────────────────
-                SliverAppBar(
-                  pinned: true,
-                  toolbarHeight: 66,
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  automaticallyImplyLeading: false,
-                  leadingWidth: 68,
-                  flexibleSpace: ClipRect(
-                    child: Stack(
-                      children: [
-                        BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-                          child: Container(
-                            color: scaffoldBg.withAlpha(isDark ? 110 : 150),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0, right: 0, bottom: 0,
-                          child: Container(
-                            height: 0.5,
-                            color: isDark
-                                ? const Color(0xFF424242)
-                                : const Color(0xFFD1D1D6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  leading: Padding(
-                    padding: const EdgeInsets.only(left: 20),
-                    child: Center(
-                      child: Tappable(
-                        onTap: () => Navigator.maybePop(context),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? const Color(0xFF2C2C2E)
-                                : const Color(0xFFE5E5EA),
-                          ),
-                          child: Icon(CupertinoIcons.chevron_left,
-                              color: scheme.onSurface, size: 16),
-                        ),
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    'Alignment',
-                    style: AppTypography.navTitle(color: scheme.onSurface),
-                  ),
-                  actions: [
-                    ValueListenableBuilder<Set<String>>(
-                      valueListenable: starredNotifier,
-                      builder: (_, starred, _a) {
-                        final isStarred =
-                            starred.contains(widget.alignmentId);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 20),
-                          child: Tappable(
-                            onTap: () => AnalysisService.toggleStar(
-                                widget.alignmentId),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark
-                                    ? const Color(0xFF2C2C2E)
-                                    : const Color(0xFFE5E5EA),
-                              ),
-                              child: Icon(
-                                isStarred
-                                    ? CupertinoIcons.star_fill
-                                    : CupertinoIcons.star,
-                                size: 17,
-                                color: isStarred
-                                    ? const Color(0xFFFF9F0A)
-                                    : scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+          backgroundColor: Colors.transparent,
+          body: Transform.translate(
+            offset: _drag,
+            child: Transform.scale(
+              scale: sheetScale,
+              alignment: Alignment.topCenter,
+              child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(cornerRadius),
                 ),
-
-                // ── Meta card ────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                      decoration: ShapeDecoration(
-                        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                        shape: SmoothRectangleBorder(
-                          borderRadius: SmoothBorderRadius(
-                              cornerRadius: 16, cornerSmoothing: 0.6),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _TypeBadge(type: contentType, scheme: scheme),
-                              const Spacer(),
-                              Text(
-                                _relativeTime(createdAt),
-                                style: AppTypography.dataSmall(color: scheme.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                          if (title != null && title.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              title,
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
-                                height: 1.35,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Text(
-                            url,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
-                              height: 1.45,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 120 : 60),
+                    blurRadius: 40,
+                    spreadRadius: 0,
+                    offset: const Offset(0, -4),
                   ),
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 60 : 28),
+                    blurRadius: 80,
+                    spreadRadius: 8,
+                  ),
+                ],
+              ),
+              child: ClipSmoothRect(
+                radius: SmoothBorderRadius(
+                  cornerRadius: cornerRadius,
+                  cornerSmoothing: 0.6,
                 ),
-
-                // ── Progress card (visible while analysing) ──────────────────
-                if (_isAnalysing)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                        decoration: ShapeDecoration(
-                          color:
-                              isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                          shape: SmoothRectangleBorder(
-                            borderRadius: SmoothBorderRadius(
-                                cornerRadius: 14, cornerSmoothing: 0.6),
+                child: SafeArea(
+                  bottom: false,
+                  top: false,
+                  child: Stack(
+                    children: [
+                      // Opaque background that travels with the drag.
+                      Positioned.fill(child: Container(color: scaffoldBg)),
+                      CustomScrollView(
+                        slivers: [
+                          // Space reserved for the fixed handle bar.
+                          SliverToBoxAdapter(
+                            child: SizedBox(height: handleTotalHeight),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 260),
-                              child: Text(
-                                _statusMessage,
-                                key: ValueKey(_statusMessage),
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: scheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
+
+                          // ── Meta card ────────────────────────────────────────────────
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 90, 20, 0),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  16,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF1C1C1E)
+                                      : Colors.white,
+                                  shape: SmoothRectangleBorder(
+                                    borderRadius: SmoothBorderRadius(
+                                      cornerRadius: 16,
+                                      cornerSmoothing: 0.6,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        _TypeBadge(
+                                          type: contentType,
+                                          scheme: scheme,
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          _relativeTime(createdAt),
+                                          style: AppTypography.dataSmall(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (title != null && title.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        title,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurface,
+                                          height: 1.35,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      url,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: scheme.onSurfaceVariant,
+                                        height: 1.45,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            ClipSmoothRect(
-                              radius: SmoothBorderRadius(cornerRadius: 4, cornerSmoothing: 0.6),
-                              child: _watchingBackground
-                                  ? LinearProgressIndicator(
-                                      minHeight: 4,
-                                      backgroundColor:
-                                          scheme.primary.withAlpha(30),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          scheme.primary),
-                                    )
-                                  : TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: _progress),
-                                      duration:
-                                          const Duration(milliseconds: 500),
-                                      curve: Curves.easeOutCubic,
-                                      builder: (_, value, _b) =>
-                                          LinearProgressIndicator(
-                                        value: value,
-                                        minHeight: 4,
-                                        backgroundColor:
-                                            scheme.primary.withAlpha(30),
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                scheme.primary),
+                          ),
+
+                          // ── Progress card (visible while analysing) ──────────────────
+                          if (_isAnalysing)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  14,
+                                  20,
+                                  0,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    14,
+                                    16,
+                                    14,
+                                  ),
+                                  decoration: ShapeDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF1C1C1E)
+                                        : Colors.white,
+                                    shape: SmoothRectangleBorder(
+                                      borderRadius: SmoothBorderRadius(
+                                        cornerRadius: 14,
+                                        cornerSmoothing: 0.6,
                                       ),
                                     ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 260,
+                                        ),
+                                        child: Text(
+                                          _statusMessage,
+                                          key: ValueKey(_statusMessage),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            color: scheme.onSurfaceVariant,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      ClipSmoothRect(
+                                        radius: SmoothBorderRadius(
+                                          cornerRadius: 4,
+                                          cornerSmoothing: 0.6,
+                                        ),
+                                        child: _watchingBackground
+                                            ? LinearProgressIndicator(
+                                                minHeight: 4,
+                                                backgroundColor: scheme.primary
+                                                    .withAlpha(30),
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(scheme.primary),
+                                              )
+                                            : TweenAnimationBuilder<double>(
+                                                tween: Tween(
+                                                  begin: 0.0,
+                                                  end: _progress,
+                                                ),
+                                                duration: const Duration(
+                                                  milliseconds: 500,
+                                                ),
+                                                curve: Curves.easeOutCubic,
+                                                builder: (_, value, _b) =>
+                                                    LinearProgressIndicator(
+                                                      value: value,
+                                                      minHeight: 4,
+                                                      backgroundColor: scheme
+                                                          .primary
+                                                          .withAlpha(30),
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(scheme.primary),
+                                                    ),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
 
-                // ── Analysis sections (appear as each completes) ─────────────
-                if (realismCheck.isNotEmpty)
-                  _Section(
-                    icon: CupertinoIcons.checkmark_shield_fill,
-                    title: 'Realism Check',
-                    scheme: scheme,
-                    isDark: isDark,
-                    children: realismCheck
-                        .map((m) => _RealismItem(
-                              claim: m['claim'] as String? ?? '',
-                              verdict: m['verdict'] as String? ?? 'unverified',
-                              explanation: m['explanation'] as String? ?? '',
+                          // ── Analysis sections (appear as each completes) ─────────────
+                          if (realismCheck.isNotEmpty)
+                            _Section(
+                              icon: CupertinoIcons.checkmark_shield_fill,
+                              title: 'Realism Check',
                               scheme: scheme,
                               isDark: isDark,
-                            ))
-                        .toList(),
-                  ),
+                              children: realismCheck
+                                  .map(
+                                    (m) => _RealismItem(
+                                      claim: m['claim'] as String? ?? '',
+                                      verdict:
+                                          m['verdict'] as String? ??
+                                          'unverified',
+                                      explanation:
+                                          m['explanation'] as String? ?? '',
+                                      scheme: scheme,
+                                      isDark: isDark,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
 
-                if (products.isNotEmpty)
-                  _Section(
-                    icon: CupertinoIcons.tag_fill,
-                    title: 'Products & Brands',
-                    scheme: scheme,
-                    isDark: isDark,
-                    children: products
-                        .map((m) => _ProductItem(
-                              product: m['product'] as String? ?? '',
-                              brand: m['brand'] as String? ?? '',
-                              context: m['context'] as String? ?? '',
+                          if (products.isNotEmpty)
+                            _Section(
+                              icon: CupertinoIcons.tag_fill,
+                              title: 'Products & Brands',
                               scheme: scheme,
-                            ))
-                        .toList(),
-                  ),
+                              isDark: isDark,
+                              children: products
+                                  .map(
+                                    (m) => _ProductItem(
+                                      product: m['product'] as String? ?? '',
+                                      brand: m['brand'] as String? ?? '',
+                                      context: m['context'] as String? ?? '',
+                                      scheme: scheme,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
 
-                if (timeline.isNotEmpty)
-                  _Section(
-                    icon: CupertinoIcons.clock_fill,
-                    title: 'Timeline',
-                    scheme: scheme,
-                    isDark: isDark,
-                    children: timeline
-                        .map((m) => _TimelineItem(
-                              position: m['position']?.toString() ?? '',
-                              event: m['event'] as String? ?? '',
+                          if (timeline.isNotEmpty)
+                            _Section(
+                              icon: CupertinoIcons.clock_fill,
+                              title: 'Timeline',
                               scheme: scheme,
-                            ))
-                        .toList(),
-                  ),
+                              isDark: isDark,
+                              children: timeline
+                                  .map(
+                                    (m) => _TimelineItem(
+                                      position: m['position']?.toString() ?? '',
+                                      event: m['event'] as String? ?? '',
+                                      scheme: scheme,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
 
-                if (similar.isNotEmpty)
-                  _Section(
-                    icon: CupertinoIcons.link,
-                    title: 'Similar Content',
-                    scheme: scheme,
-                    isDark: isDark,
-                    children: similar
-                        .map((m) => _SimilarItem(
-                              title: m['title'] as String? ?? '',
-                              url: m['url'] as String? ?? '',
-                              summary: m['summary'] as String? ?? '',
+                          if (similar.isNotEmpty)
+                            _Section(
+                              icon: CupertinoIcons.link,
+                              title: 'Similar Content',
                               scheme: scheme,
-                            ))
-                        .toList(),
-                  ),
+                              isDark: isDark,
+                              children: similar
+                                  .map(
+                                    (m) => _SimilarItem(
+                                      title: m['title'] as String? ?? '',
+                                      url: m['url'] as String? ?? '',
+                                      summary: m['summary'] as String? ?? '',
+                                      scheme: scheme,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
 
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 48 + 16 + 16 + MediaQuery.of(context).padding.bottom,
-                  ),
+                          SliverToBoxAdapter(
+                            child: SizedBox(
+                              height:
+                                  48 +
+                                  16 +
+                                  16 +
+                                  MediaQuery.of(context).padding.bottom,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        bottom: 16,
+                        child: _ChatBar(alignmentId: widget.alignmentId),
+                      ),
+// ── Fixed drag handle + gradient blur ────────────────────────
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: frostedTotalHeight,
+                        child: GestureDetector(
+                          onPanUpdate: _onPanUpdate,
+                          onPanEnd: _onPanEnd,
+                          behavior: HitTestBehavior.opaque,
+                          child: Stack(
+                            children: [
+                              _FrostedHandleGradient(
+                                height: frostedTotalHeight,
+                                backgroundColor: scaffoldBg,
+                                isDark: isDark,
+                              ),
+                              // Indicator bar + star button
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: topPad + handleBarHeight,
+                                child: SafeArea(
+                                  bottom: false,
+                                  child: SizedBox(
+                                    height: handleBarHeight,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Centred pill
+                                        Container(
+                                          width: 36,
+                                          height: 3,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black.withAlpha(85),
+                                            borderRadius: BorderRadius.circular(
+                                              1.5,
+                                            ),
+                                          ),
+                                        ),
+                                        // Star — frosted pill, pinned to right edge
+                                        Positioned(
+                                          right: 16,
+                                          top: 0,
+                                          bottom: 0,
+                                          child: Center(
+                                            child: ValueListenableBuilder<Set<String>>(
+                                              valueListenable: starredNotifier,
+                                              builder: (_, starred, _a) {
+                                                final isStarred = starred
+                                                    .contains(
+                                                      widget.alignmentId,
+                                                    );
+                                                return Tappable(
+                                                  onTap: () =>
+                                                      AnalysisService.toggleStar(
+                                                        widget.alignmentId,
+                                                      ),
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          50,
+                                                        ),
+                                                    child: BackdropFilter(
+                                                      filter: ImageFilter.blur(
+                                                        sigmaX: 16,
+                                                        sigmaY: 16,
+                                                      ),
+                                                      child: Container(
+                                                        width: 36,
+                                                        height: 36,
+                                                        decoration: BoxDecoration(
+                                                          color: isDark
+                                                              ? Colors.white
+                                                                    .withAlpha(
+                                                                      18,
+                                                                    )
+                                                              : Colors.black
+                                                                    .withAlpha(
+                                                                      10,
+                                                                    ),
+                                                          shape:
+                                                              BoxShape.circle,
+                                                          border: Border.all(
+                                                            color: isDark
+                                                                ? Colors.white
+                                                                      .withAlpha(
+                                                                        22,
+                                                                      )
+                                                                : Colors.black
+                                                                      .withAlpha(
+                                                                        14,
+                                                                      ),
+                                                            width: 0.7,
+                                                          ),
+                                                        ),
+                                                        child: Icon(
+                                                          isStarred
+                                                              ? CupertinoIcons
+                                                                    .star_fill
+                                                              : CupertinoIcons
+                                                                    .star,
+                                                          size: 16,
+                                                          color: isStarred
+                                                              ? const Color(
+                                                                  0xFFFF9F0A,
+                                                                )
+                                                              : scheme
+                                                                    .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ], // Stack children
+                  ), // Stack
+                ), // SafeArea
+              ), // ClipSmoothRect
+            ), // DecoratedBox
+            ), // Transform.scale
+          ), // Transform.translate
+        ); // Scaffold
+      },
+    );
+  }
+}
+
+class _FrostedHandleGradient extends StatelessWidget {
+  final double height;
+  final Color backgroundColor;
+  final bool isDark;
+
+  const _FrostedHandleGradient({
+    required this.height,
+    required this.backgroundColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final topTintAlpha = isDark ? 0.96 : 0.94;
+    final midTintAlpha = isDark ? 0.84 : 0.82;
+    final lowTintAlpha = isDark ? 0.36 : 0.34;
+
+    return SizedBox(
+      height: height,
+      child: Stack(
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.black, Colors.black, Colors.transparent],
+              stops: [0.0, 0.58, 0.92],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 36,
+                  sigmaY: 36,
+                  tileMode: TileMode.decal,
                 ),
-              ],
-            ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: _ChatBar(alignmentId: widget.alignmentId),
-                ),
-              ],
+                child: const SizedBox.expand(),
+              ),
             ),
           ),
-        );
-      },
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  backgroundColor.withValues(alpha: topTintAlpha),
+                  backgroundColor.withValues(alpha: midTintAlpha),
+                  backgroundColor.withValues(alpha: lowTintAlpha),
+                  backgroundColor.withValues(alpha: 0.0),
+                ],
+                stops: const [0.0, 0.34, 0.68, 0.92],
+              ),
+            ),
+            child: const SizedBox.expand(),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: isDark ? 0.07 : 0.24),
+                  Colors.white.withValues(alpha: isDark ? 0.035 : 0.08),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.42, 0.86],
+              ),
+            ),
+            child: const SizedBox.expand(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -478,8 +796,9 @@ class _Section extends StatelessWidget {
                 const SizedBox(width: 7),
                 Text(
                   title.toUpperCase(),
-                  style: AppTypography.categoryLabel(color: scheme.onSurfaceVariant)
-                      .copyWith(fontSize: 12, letterSpacing: 0.5),
+                  style: AppTypography.categoryLabel(
+                    color: scheme.onSurfaceVariant,
+                  ).copyWith(fontSize: 12, letterSpacing: 0.5),
                 ),
               ],
             ),
@@ -488,8 +807,10 @@ class _Section extends StatelessWidget {
               decoration: ShapeDecoration(
                 color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                 shape: SmoothRectangleBorder(
-                  borderRadius:
-                      SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                  borderRadius: SmoothBorderRadius(
+                    cornerRadius: 16,
+                    cornerSmoothing: 0.6,
+                  ),
                 ),
               ),
               child: Column(
@@ -534,16 +855,16 @@ class _RealismItem extends StatelessWidget {
   });
 
   Color get _verdictColor => switch (verdict.toLowerCase()) {
-        'true' => const Color(0xFF34C759),
-        'misleading' => const Color(0xFFFF3B30),
-        _ => const Color(0xFFFF9500),
-      };
+    'true' => const Color(0xFF34C759),
+    'misleading' => const Color(0xFFFF3B30),
+    _ => const Color(0xFFFF9500),
+  };
 
   String get _verdictLabel => switch (verdict.toLowerCase()) {
-        'true' => 'TRUE',
-        'misleading' => 'MISLEADING',
-        _ => 'UNVERIFIED',
-      };
+    'true' => 'TRUE',
+    'misleading' => 'MISLEADING',
+    _ => 'UNVERIFIED',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -568,13 +889,17 @@ class _RealismItem extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: _verdictColor.withAlpha(isDark ? 45 : 25),
-                  borderRadius: SmoothBorderRadius(cornerRadius: 6, cornerSmoothing: 0.6),
-                  border:
-                      Border.all(color: _verdictColor.withAlpha(90), width: 1),
+                  borderRadius: SmoothBorderRadius(
+                    cornerRadius: 6,
+                    cornerSmoothing: 0.6,
+                  ),
+                  border: Border.all(
+                    color: _verdictColor.withAlpha(90),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   _verdictLabel,
@@ -588,9 +913,10 @@ class _RealismItem extends StatelessWidget {
             Text(
               explanation,
               style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: scheme.onSurfaceVariant,
-                  height: 1.45),
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                height: 1.45,
+              ),
             ),
           ],
         ],
@@ -621,22 +947,30 @@ class _ProductItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(product,
-              style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface)),
+          Text(
+            product,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface,
+            ),
+          ),
           if (brand.isNotEmpty) ...[
             const SizedBox(height: 2),
-            Text(brand,
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: scheme.primary)),
+            Text(
+              brand,
+              style: GoogleFonts.inter(fontSize: 13, color: scheme.primary),
+            ),
           ],
           if (context.isNotEmpty) ...[
             const SizedBox(height: 3),
-            Text(context,
-                style: GoogleFonts.inter(
-                    fontSize: 12, color: scheme.onSurfaceVariant)),
+            Text(
+              context,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ],
       ),
@@ -651,8 +985,11 @@ class _TimelineItem extends StatelessWidget {
   final String event;
   final ColorScheme scheme;
 
-  const _TimelineItem(
-      {required this.position, required this.event, required this.scheme});
+  const _TimelineItem({
+    required this.position,
+    required this.event,
+    required this.scheme,
+  });
 
   @override
   Widget build(BuildContext _) {
@@ -665,7 +1002,10 @@ class _TimelineItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: scheme.primary.withAlpha(20),
-              borderRadius: SmoothBorderRadius(cornerRadius: 6, cornerSmoothing: 0.6),
+              borderRadius: SmoothBorderRadius(
+                cornerRadius: 6,
+                cornerSmoothing: 0.6,
+              ),
             ),
             child: Text(
               position,
@@ -674,9 +1014,14 @@ class _TimelineItem extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(event,
-                style: GoogleFonts.inter(
-                    fontSize: 14, color: scheme.onSurface, height: 1.4)),
+            child: Text(
+              event,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: scheme.onSurface,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
@@ -714,25 +1059,32 @@ class _SimilarItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                  height: 1.3)),
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface,
+              height: 1.3,
+            ),
+          ),
           if (url.isNotEmpty) ...[
             const SizedBox(height: 3),
-            Text(_domain(url),
-                style:
-                    GoogleFonts.inter(fontSize: 12, color: scheme.primary)),
+            Text(
+              _domain(url),
+              style: GoogleFonts.inter(fontSize: 12, color: scheme.primary),
+            ),
           ],
           if (summary.isNotEmpty) ...[
             const SizedBox(height: 5),
-            Text(summary,
-                style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: scheme.onSurfaceVariant,
-                    height: 1.45)),
+            Text(
+              summary,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
           ],
         ],
       ),
@@ -773,7 +1125,9 @@ class _ChatBarState extends State<_ChatBar> {
       pageBuilder: (ctx, _, __) => Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
@@ -807,8 +1161,7 @@ class _ChatBarState extends State<_ChatBar> {
                     sigmaY: curved.value * 22,
                   ),
                   child: Container(
-                    color: Colors.black
-                        .withAlpha((curved.value * 110).round()),
+                    color: Colors.black.withAlpha((curved.value * 110).round()),
                   ),
                 ),
               ),
@@ -834,21 +1187,21 @@ class _ChatBarState extends State<_ChatBar> {
   }
 
   BoxDecoration _pillDecoration(bool isDark) => BoxDecoration(
-        color: isDark ? Colors.white.withAlpha(22) : Colors.black.withAlpha(12),
-        borderRadius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
-        border: Border.all(
-          color: isDark ? Colors.white.withAlpha(45) : Colors.black.withAlpha(30),
-          width: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(isDark ? 70 : 30),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      );
+    color: isDark ? Colors.white.withAlpha(22) : Colors.black.withAlpha(12),
+    borderRadius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
+    border: Border.all(
+      color: isDark ? Colors.white.withAlpha(45) : Colors.black.withAlpha(30),
+      width: 0.8,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withAlpha(isDark ? 70 : 30),
+        blurRadius: 24,
+        spreadRadius: 0,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -869,7 +1222,10 @@ class _ChatBarState extends State<_ChatBar> {
         children: [
           Expanded(
             child: ClipSmoothRect(
-              radius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
+              radius: SmoothBorderRadius(
+                cornerRadius: 24,
+                cornerSmoothing: 0.6,
+              ),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
                 child: Container(
@@ -916,8 +1272,8 @@ class _ChatBarState extends State<_ChatBar> {
                                 color: hasText
                                     ? scheme.primary
                                     : (isDark
-                                        ? Colors.white.withAlpha(18)
-                                        : Colors.black.withAlpha(12)),
+                                          ? Colors.white.withAlpha(18)
+                                          : Colors.black.withAlpha(12)),
                               ),
                               child: Icon(
                                 CupertinoIcons.arrow_up,
@@ -941,7 +1297,10 @@ class _ChatBarState extends State<_ChatBar> {
             Tappable(
               onTap: () => _openSheet(context),
               child: ClipSmoothRect(
-                radius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
+                radius: SmoothBorderRadius(
+                  cornerRadius: 24,
+                  cornerSmoothing: 0.6,
+                ),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
                   child: Container(
@@ -1019,12 +1378,14 @@ class _ChatSheetState extends State<_ChatSheet> {
     final type = a['content_type'] as String? ?? 'article';
     final url = a['url'] as String? ?? '';
     final raw = a['analyses'];
-    final analyses =
-        raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    final analyses = raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
 
     final sb = StringBuffer()
       ..writeln(
-          'You are a helpful assistant. The user is asking about content they analysed:')
+        'You are a helpful assistant. The user is asking about content they analysed:',
+      )
       ..writeln('Title: $title')
       ..writeln('Type: $type')
       ..writeln('URL: $url')
@@ -1041,7 +1402,8 @@ class _ChatSheetState extends State<_ChatSheet> {
     final products = analyses['products'];
     if (products is List && products.isNotEmpty) {
       sb.writeln(
-          'Products: ${products.whereType<Map>().map((p) => p['product']).join(', ')}');
+        'Products: ${products.whereType<Map>().map((p) => p['product']).join(', ')}',
+      );
     }
 
     final timeline = analyses['timeline'];
@@ -1054,7 +1416,9 @@ class _ChatSheetState extends State<_ChatSheet> {
       sb.writeln('Similar content: ${similar.length} items found.');
     }
 
-    sb.writeln('\nAnswer questions about this content concisely and helpfully.');
+    sb.writeln(
+      '\nAnswer questions about this content concisely and helpfully.',
+    );
     return sb.toString();
   }
 
@@ -1075,16 +1439,19 @@ class _ChatSheetState extends State<_ChatSheet> {
     _scrollToBottom();
 
     AnalysisService.saveChatHistory(
-            widget.alignmentId, List.from(_messages))
-        .ignore();
+      widget.alignmentId,
+      List.from(_messages),
+    ).ignore();
 
     final response = await GeminiService.chat(
       systemContext: _buildSystemContext(),
       history: _messages
-          .map((m) => {
-                'role': m['role'] as String,
-                'content': m['content'] as String,
-              })
+          .map(
+            (m) => {
+              'role': m['role'] as String,
+              'content': m['content'] as String,
+            },
+          )
           .toList(),
     );
 
@@ -1092,7 +1459,8 @@ class _ChatSheetState extends State<_ChatSheet> {
 
     final assistantMsg = <String, dynamic>{
       'role': 'assistant',
-      'content': response ?? "Sorry, I couldn't get a response. Please try again.",
+      'content':
+          response ?? "Sorry, I couldn't get a response. Please try again.",
       'timestamp': DateTime.now().toUtc().toIso8601String(),
     };
 
@@ -1103,8 +1471,9 @@ class _ChatSheetState extends State<_ChatSheet> {
     _scrollToBottom();
 
     AnalysisService.saveChatHistory(
-            widget.alignmentId, List.from(_messages))
-        .ignore();
+      widget.alignmentId,
+      List.from(_messages),
+    ).ignore();
   }
 
   void _scrollToBottom({bool animated = true}) {
@@ -1112,9 +1481,11 @@ class _ChatSheetState extends State<_ChatSheet> {
       if (!_scrollCtrl.hasClients) return;
       final max = _scrollCtrl.position.maxScrollExtent;
       if (animated) {
-        _scrollCtrl.animateTo(max,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut);
+        _scrollCtrl.animateTo(
+          max,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       } else {
         _scrollCtrl.jumpTo(max);
       }
@@ -1148,7 +1519,10 @@ class _ChatSheetState extends State<_ChatSheet> {
                   color: isDark
                       ? const Color(0xFF3A3A3C)
                       : const Color(0xFFD1D1D6),
-                  borderRadius: SmoothBorderRadius(cornerRadius: 2, cornerSmoothing: 0.6),
+                  borderRadius: SmoothBorderRadius(
+                    cornerRadius: 2,
+                    cornerSmoothing: 0.6,
+                  ),
                 ),
               ),
               // Header
@@ -1159,8 +1533,9 @@ class _ChatSheetState extends State<_ChatSheet> {
                     Expanded(
                       child: Text(
                         'Ask about this Alignment',
-                        style: AppTypography.navTitle(color: scheme.onSurface)
-                            .copyWith(fontSize: 16),
+                        style: AppTypography.navTitle(
+                          color: scheme.onSurface,
+                        ).copyWith(fontSize: 16),
                       ),
                     ),
                     Tappable(
@@ -1174,17 +1549,21 @@ class _ChatSheetState extends State<_ChatSheet> {
                               ? const Color(0xFF2C2C2E)
                               : const Color(0xFFF2F2F7),
                         ),
-                        child: Icon(CupertinoIcons.xmark,
-                            size: 13, color: scheme.onSurfaceVariant),
+                        child: Icon(
+                          CupertinoIcons.xmark,
+                          size: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Divider(
-                  height: 0.5,
-                  thickness: 0.5,
-                  color: scheme.outline.withAlpha(60)),
+                height: 0.5,
+                thickness: 0.5,
+                color: scheme.outline.withAlpha(60),
+              ),
               // Messages
               Expanded(
                 child: _messages.isEmpty && !_loading
@@ -1207,9 +1586,10 @@ class _ChatSheetState extends State<_ChatSheet> {
               ),
               // Input
               Divider(
-                  height: 0.5,
-                  thickness: 0.5,
-                  color: scheme.outline.withAlpha(60)),
+                height: 0.5,
+                thickness: 0.5,
+                color: scheme.outline.withAlpha(60),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
                 child: Row(
@@ -1227,27 +1607,42 @@ class _ChatSheetState extends State<_ChatSheet> {
                           _ctrl.clear();
                         },
                         style: GoogleFonts.inter(
-                            fontSize: 14, color: scheme.onSurface),
+                          fontSize: 14,
+                          color: scheme.onSurface,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Message…',
                           hintStyle: GoogleFonts.inter(
-                              fontSize: 14, color: scheme.onSurfaceVariant),
+                            fontSize: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
                           filled: true,
                           fillColor: isDark
                               ? const Color(0xFF2C2C2E)
                               : const Color(0xFFF2F2F7),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+                            borderRadius: SmoothBorderRadius(
+                              cornerRadius: 20,
+                              cornerSmoothing: 0.6,
+                            ),
                             borderSide: BorderSide.none,
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+                            borderRadius: SmoothBorderRadius(
+                              cornerRadius: 20,
+                              cornerSmoothing: 0.6,
+                            ),
                             borderSide: BorderSide.none,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+                            borderRadius: SmoothBorderRadius(
+                              cornerRadius: 20,
+                              cornerSmoothing: 0.6,
+                            ),
                             borderSide: BorderSide.none,
                           ),
                         ),
@@ -1269,8 +1664,11 @@ class _ChatSheetState extends State<_ChatSheet> {
                           shape: BoxShape.circle,
                           color: scheme.primary,
                         ),
-                        child: Icon(CupertinoIcons.arrow_up,
-                            size: 16, color: scheme.onPrimary),
+                        child: Icon(
+                          CupertinoIcons.arrow_up,
+                          size: 16,
+                          color: scheme.onPrimary,
+                        ),
                       ),
                     ),
                   ],
@@ -1305,8 +1703,9 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser)
@@ -1318,24 +1717,35 @@ class _MessageBubble extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: scheme.primary.withAlpha(18),
               ),
-              child: Icon(CupertinoIcons.sparkles,
-                  size: 12, color: scheme.primary),
+              child: Icon(
+                CupertinoIcons.sparkles,
+                size: 12,
+                color: scheme.primary,
+              ),
             ),
           Flexible(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isUser
                     ? scheme.primary
                     : (isDark
-                        ? const Color(0xFF2C2C2E)
-                        : const Color(0xFFF2F2F7)),
+                          ? const Color(0xFF2C2C2E)
+                          : const Color(0xFFF2F2F7)),
                 borderRadius: SmoothBorderRadius.only(
                   topLeft: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-                  topRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-                  bottomLeft: SmoothRadius(cornerRadius: isUser ? 16 : 4, cornerSmoothing: 0.6),
-                  bottomRight: SmoothRadius(cornerRadius: isUser ? 4 : 16, cornerSmoothing: 0.6),
+                  topRight: SmoothRadius(
+                    cornerRadius: 16,
+                    cornerSmoothing: 0.6,
+                  ),
+                  bottomLeft: SmoothRadius(
+                    cornerRadius: isUser ? 16 : 4,
+                    cornerSmoothing: 0.6,
+                  ),
+                  bottomRight: SmoothRadius(
+                    cornerRadius: isUser ? 4 : 16,
+                    cornerSmoothing: 0.6,
+                  ),
                 ),
               ),
               child: Text(
@@ -1399,18 +1809,23 @@ class _TypingIndicatorState extends State<_TypingIndicator>
               shape: BoxShape.circle,
               color: scheme.primary.withAlpha(18),
             ),
-            child: Icon(CupertinoIcons.sparkles,
-                size: 12, color: scheme.primary),
+            child: Icon(
+              CupertinoIcons.sparkles,
+              size: 12,
+              color: scheme.primary,
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color:
-                  isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+              color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
               borderRadius: SmoothBorderRadius.only(
                 topLeft: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
                 topRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
-                bottomRight: SmoothRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                bottomRight: SmoothRadius(
+                  cornerRadius: 16,
+                  cornerSmoothing: 0.6,
+                ),
                 bottomLeft: SmoothRadius(cornerRadius: 4, cornerSmoothing: 0.6),
               ),
             ),
@@ -1429,7 +1844,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                       margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: scheme.onSurfaceVariant.withValues(alpha: opacity),
+                        color: scheme.onSurfaceVariant.withValues(
+                          alpha: opacity,
+                        ),
                       ),
                     );
                   },
@@ -1462,8 +1879,11 @@ class _ChatEmptyState extends StatelessWidget {
               shape: BoxShape.circle,
               color: scheme.primary.withAlpha(18),
             ),
-            child: Icon(CupertinoIcons.sparkles,
-                color: scheme.primary, size: 24),
+            child: Icon(
+              CupertinoIcons.sparkles,
+              color: scheme.primary,
+              size: 24,
+            ),
           ),
           const SizedBox(height: 14),
           Text(
@@ -1500,11 +1920,14 @@ class _TypeBadge extends StatelessWidget {
   const _TypeBadge({required this.type, required this.scheme});
 
   (IconData, Color, String) get _config => switch (type) {
-        'youtube' => (CupertinoIcons.play_rectangle_fill,
-            const Color(0xFFFF3B30), 'YouTube'),
-        'reel' => (CupertinoIcons.film_fill, const Color(0xFFBF5AF2), 'Reel'),
-        _ => (CupertinoIcons.doc_text_fill, scheme.primary, 'Article'),
-      };
+    'youtube' => (
+      CupertinoIcons.play_rectangle_fill,
+      const Color(0xFFFF3B30),
+      'YouTube',
+    ),
+    'reel' => (CupertinoIcons.film_fill, const Color(0xFFBF5AF2), 'Reel'),
+    _ => (CupertinoIcons.doc_text_fill, scheme.primary, 'Article'),
+  };
 
   @override
   Widget build(BuildContext _) {
