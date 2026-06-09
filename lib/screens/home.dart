@@ -344,10 +344,7 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(right: 20),
                       child: Tappable(
-                        onTap: () => Navigator.push(
-                          context,
-                          AppRoute.push(const ProfileScreen()),
-                        ),
+                        onTap: () => showProfileModal(context),
                         child: _Avatar(
                           initial: _initial,
                           primary: scheme.primary,
@@ -704,17 +701,26 @@ class _AlignmentDeckState extends State<AlignmentDeck> {
     }
 
     setState(() => _isSnapping = true);
-    await _scrollController.animateTo(
-      target,
-      duration: _snapDuration,
-      curve: Curves.fastOutSlowIn,
-    );
+    try {
+      await _scrollController.animateTo(
+        target,
+        duration: _snapDuration,
+        curve: Curves.fastOutSlowIn,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _activeIndex = targetIndex;
+          _isSnapping = false;
+        });
+      }
+    }
     if (!mounted) return;
-    setState(() {
-      _activeIndex = targetIndex;
-      _isSnapping = false;
-    });
     widget.onActiveChanged?.call(widget.alignments[targetIndex]);
+
+    // If the scroll settled off-target (e.g. interrupted), snap once more.
+    final residual = (_scrollController.offset - target).abs();
+    if (residual > 1) _snapTimer = Timer(_snapDelay, _snapToNearestCard);
   }
 
   Future<void> _onCardLongPress(BuildContext context, String id) async {
@@ -815,7 +821,7 @@ class _AlignmentDeckState extends State<AlignmentDeck> {
             child: SingleChildScrollView(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               clipBehavior: Clip.none,
               child: SizedBox(
                 width: contentWidth,
@@ -1154,10 +1160,7 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
                   const Spacer(),
                   // View More Insights link — right-aligned
                   GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      AppRoute.push(const InsightsScreen()),
-                    ),
+                    onTap: () => showInsightsModal(context),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1235,8 +1238,8 @@ class _NavBar extends StatelessWidget {
         : const Color(0xFFE8E4DF);
     final inactiveIcon = isDark ? Colors.white70 : const Color(0xFF7A7470);
     final borderColor = isDark
-        ? Colors.white.withAlpha(50)
-        : Colors.black.withAlpha(35);
+        ? Colors.white.withAlpha(28)
+        : Colors.black.withAlpha(18);
     final bgColor = isDark
         ? const Color(0xFF1C1C1E).withAlpha(140)
         : Colors.white.withAlpha(160);
@@ -1275,10 +1278,7 @@ class _NavBar extends StatelessWidget {
               children: [
                 Tappable(
                   scaleOnPress: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    AppRoute.push(const GlobeScreen()),
-                  ),
+                  onTap: () => showGlobeModal(context),
                   child: Container(
                     width: 45,
                     height: 45,
@@ -1296,10 +1296,7 @@ class _NavBar extends StatelessWidget {
                 const SizedBox(width: 6),
                 Tappable(
                   scaleOnPress: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    AppRoute.push(const InsightsScreen()),
-                  ),
+                  onTap: () => showInsightsModal(context),
                   child: Container(
                     width: 45,
                     height: 45,
@@ -1325,12 +1322,12 @@ class _NavBar extends StatelessWidget {
                     width: 45,
                     height: 45,
                     decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.9),
+                      color: scheme.primary.withValues(alpha: 0.18),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       CupertinoIcons.plus,
-                      color: scheme.onPrimary,
+                      color: scheme.primary,
                       size: 18,
                     ),
                   ),

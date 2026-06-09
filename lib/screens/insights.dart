@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
@@ -11,22 +12,84 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../services/analysis_service.dart';
+import '../widgets/page_header.dart';
 import '../widgets/tappable.dart';
 
-class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({super.key});
-
-  @override
-  State<InsightsScreen> createState() => _InsightsState();
+Future<void> showInsightsModal(BuildContext context) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Insights',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 320),
+    transitionBuilder: (_, anim, __, child) {
+      final curved = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutQuart,
+        reverseCurve: Curves.easeOutCubic,
+      );
+      return Stack(
+        children: [
+          AnimatedBuilder(
+            animation: curved,
+            builder: (_, __) => BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 12 * curved.value,
+                sigmaY: 12 * curved.value,
+              ),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.45 * curved.value),
+              ),
+            ),
+          ),
+          SlideTransition(
+            position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(curved),
+            child: child,
+          ),
+        ],
+      );
+    },
+    pageBuilder: (_, __, ___) => const _InsightsSheet(),
+  );
 }
 
-class _InsightsState extends State<InsightsScreen> {
+// Keep the old class name usable as an alias
+typedef InsightsScreen = _InsightsSheet;
+
+class _InsightsSheet extends StatefulWidget {
+  const _InsightsSheet({super.key});
+
+  @override
+  State<_InsightsSheet> createState() => _InsightsSheetState();
+}
+
+class _InsightsSheetState extends State<_InsightsSheet>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
+  double _dragX = 0;
+  late AnimationController _snapBackCtrl;
+  late Animation<double> _snapBackAnim;
+  double _snapBackFrom = 0;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _snapBackCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _snapBackAnim = CurvedAnimation(parent: _snapBackCtrl, curve: Curves.easeOutCubic);
+    _snapBackCtrl.addListener(() {
+      setState(() => _dragX = _snapBackFrom * (1 - _snapBackAnim.value));
+    });
+  }
+
+  @override
+  void dispose() {
+    _snapBackCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -36,123 +99,217 @@ class _InsightsState extends State<InsightsScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  void _onDragUpdate(DragUpdateDetails d) {
+    if (_snapBackCtrl.isAnimating) _snapBackCtrl.stop();
+    final sw = MediaQuery.of(context).size.width;
+    setState(() => _dragX = (_dragX + d.delta.dx).clamp(0.0, sw.toDouble()));
+  }
+
+  void _onDragEnd(DragEndDetails d) {
+    final sw = MediaQuery.of(context).size.width;
+    if (_dragX > sw * 0.35 || d.velocity.pixelsPerSecond.dx > 600) {
+      Navigator.of(context).pop();
+    } else {
+      _snapBackFrom = _dragX;
+      _snapBackCtrl.forward(from: 0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final topPad = MediaQuery.of(context).padding.top;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final sh = MediaQuery.of(context).size.height;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 38, cornerSmoothing: 0.6);
 
-    return Scaffold(
-      body: ValueListenableBuilder<List<Map<String, dynamic>>>(
-        valueListenable: alignmentsNotifier,
-        builder: (context, alignments, _) {
-          final completed =
-              alignments.where((e) => e['is_analyzing'] != true).toList();
-          final data = _isLoading ? null : _InsightsData.compute(completed);
-
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                toolbarHeight: 66,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                automaticallyImplyLeading: false,
-                flexibleSpace: ClipRect(
-                  child: Stack(
-                    children: [
-                      BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-                        child: Container(
-                            color: scaffoldBg.withAlpha(isDark ? 110 : 150)),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          height: 0.5,
+    return Material(
+      type: MaterialType.transparency,
+      child: GestureDetector(
+        onHorizontalDragUpdate: _onDragUpdate,
+        onHorizontalDragEnd: _onDragEnd,
+        child: Transform.translate(
+          offset: Offset(_dragX, 0),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+              child: ClipSmoothRect(
+                radius: cardRadius,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+                  child: Container(
+                    height: sh - topPad - bottomPad - 20,
+                    decoration: ShapeDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.45)
+                          : Colors.white.withValues(alpha: 0.92),
+                      shape: SmoothRectangleBorder(
+                        borderRadius: cardRadius,
+                        side: BorderSide(
                           color: isDark
-                              ? const Color(0xFF424242)
-                              : const Color(0xFFD1D1D6),
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.8,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Tappable(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? const Color(0xFF2C2C2E).withValues(alpha: 0.7)
-                              : const Color(0xFFE5E5EA).withValues(alpha: 0.7),
-                        ),
-                        child: Icon(CupertinoIcons.chevron_left,
-                            color: scheme.onSurface, size: 16),
+                    ),
+                    child: ClipSmoothRect(
+                      radius: cardRadius,
+                      child: Stack(
+                        children: [
+                          // ── Scrollable content with gradient-blur top edge ──
+                          ValueListenableBuilder<List<Map<String, dynamic>>>(
+                            valueListenable: alignmentsNotifier,
+                            builder: (context, alignments, _) {
+                              final completed = alignments
+                                  .where((e) => e['is_analyzing'] != true)
+                                  .toList();
+                              final data = _isLoading
+                                  ? null
+                                  : _InsightsData.compute(completed);
+
+                              return CustomScrollView(
+                                slivers: [
+                                  // Space for the pinned header
+                                  const SliverToBoxAdapter(
+                                    child: SizedBox(height: 120),
+                                  ),
+                                  if (_isLoading)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: _SkeletonBody(isDark: isDark),
+                                    )
+                                  else if (completed.isEmpty)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: _EmptyState(scheme: scheme),
+                                    )
+                                  else ...[
+                                    SliverToBoxAdapter(
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(0, 4, 0, 0),
+                                        child: _InsightsHeatmap(
+                                          alignments: alignments,
+                                          isDark: isDark,
+                                          scheme: scheme,
+                                        ),
+                                      ),
+                                    ),
+                                    SliverToBoxAdapter(
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                                        child: _Content(
+                                          data: data!,
+                                          scheme: scheme,
+                                          isDark: isDark,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+
+                          // ── Colour-gradient pinned header overlay ────────
+                          Positioned(
+                            top: 0, left: 0, right: 0,
+                            child: _GradientBlurHeader(isDark: isDark, scheme: scheme),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Your Insights',
-                      style: AppTypography.navTitle(color: scheme.onSurface),
-                    ),
-                    if (!_isLoading)
-                      Text(
-                        'Based on ${completed.length} ${completed.length == 1 ? 'alignment' : 'alignments'}',
-                        style: AppTypography.dataSmall(color: scheme.onSurfaceVariant),
-                      ),
-                  ],
                 ),
               ),
-              if (_isLoading)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _SkeletonBody(isDark: isDark),
-                )
-              else if (completed.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyState(scheme: scheme),
-                )
-              else ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
-                    child: _InsightsHeatmap(
-                      alignments: alignments,
-                      isDark: isDark,
-                      scheme: scheme,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Gradient-blur pinned header ───────────────────────────────────────────────
+
+class _GradientBlurHeader extends StatelessWidget {
+  final bool isDark;
+  final ColorScheme scheme;
+  const _GradientBlurHeader({required this.isDark, required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    const topPad = 8.0;
+    const titleH = 52.0;
+    const totalH = 72.0;
+    final fadeColor = isDark ? Colors.black : Colors.white;
+    final a = isDark ? 0.92 : 0.98;
+
+    return SizedBox(
+      height: totalH,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    fadeColor.withValues(alpha: a),
+                    fadeColor.withValues(alpha: a * 0.85),
+                    fadeColor.withValues(alpha: a * 0.65),
+                    fadeColor.withValues(alpha: a * 0.42),
+                    fadeColor.withValues(alpha: a * 0.22),
+                    fadeColor.withValues(alpha: a * 0.08),
+                    fadeColor.withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.20, 0.40, 0.58, 0.74, 0.88, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          // Title row
+          Padding(
+            padding: const EdgeInsets.only(top: topPad),
+            child: SizedBox(
+              height: titleH,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 16, 0),
+                      child: Icon(
+                        CupertinoIcons.arrow_left,
+                        size: 20,
+                        color: scheme.onSurface,
+                      ),
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
-                    child: _Content(
-                      data: data!,
-                      scheme: scheme,
-                      isDark: isDark,
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'Insights',
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ],
-          );
-        },
+                  const SizedBox(width: 56),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -317,9 +474,9 @@ class _Content extends StatelessWidget {
   const _Content(
       {required this.data, required this.scheme, required this.isDark});
 
-  Color get _cardBg => isDark ? const Color(0xFF2C2C2E) : Colors.white;
+  Color get _cardBg => isDark ? const Color(0xFF1C1C1E) : Colors.white;
   Color get _cardBorder =>
-      isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E5EA);
+      isDark ? const Color(0xFF2A2A2C) : const Color(0xFFE5E5EA);
 
   @override
   Widget build(BuildContext context) {
@@ -519,7 +676,7 @@ class _Content extends StatelessWidget {
     ];
     final maxVal = items.map((e) => e.$2).reduce(max);
     final trackColor =
-        isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E5EA);
+        isDark ? const Color(0xFF2A2A2C) : const Color(0xFFE5E5EA);
 
     return Column(
       children: items.asMap().entries.map((entry) {
@@ -715,7 +872,7 @@ class _SkeletonBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
+    final c = isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA);
 
     Widget block(double height) => Container(
           width: double.infinity,

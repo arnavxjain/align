@@ -13,7 +13,6 @@ class UserCard extends StatefulWidget {
   final String memberSince; // e.g. "Jun 2026"
   final int analysisCount;
   final int streak;
-  final String milestoneTitle;
   final bool isDark;
 
   const UserCard({
@@ -22,7 +21,6 @@ class UserCard extends StatefulWidget {
     required this.memberSince,
     required this.analysisCount,
     required this.streak,
-    required this.milestoneTitle,
     required this.isDark,
   });
 
@@ -135,7 +133,7 @@ class _UserCardState extends State<UserCard> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final tilt = _effectiveTilt;
-    final colors = kMilestoneGradients[widget.milestoneTitle] ?? kMilestoneGradients['Newcomer']!;
+    const colors = (Color(0xFF3B82F6), Color(0xFF7C3AED));
 
     // Parallax: blob shifts opposite to the tilt direction
     final parallax = Offset(
@@ -216,7 +214,6 @@ class _UserCardState extends State<UserCard> with TickerProviderStateMixin {
                       left: 0, right: 0, bottom: 0,
                       child: _CardContent(
                         firstName: widget.firstName,
-                        milestoneTitle: widget.milestoneTitle,
                         analysisCount: widget.analysisCount,
                         streak: widget.streak,
                         memberSince: widget.memberSince,
@@ -340,7 +337,6 @@ class _SpecularPainter extends CustomPainter {
 
 class _CardContent extends StatelessWidget {
   final String firstName;
-  final String milestoneTitle;
   final int analysisCount;
   final int streak;
   final String memberSince;
@@ -349,7 +345,6 @@ class _CardContent extends StatelessWidget {
 
   const _CardContent({
     required this.firstName,
-    required this.milestoneTitle,
     required this.analysisCount,
     required this.streak,
     required this.memberSince,
@@ -382,19 +377,6 @@ class _CardContent extends StatelessWidget {
               color: textPrimary,
               letterSpacing: -0.5,
               height: 1.05,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // Milestone title in spaced small-caps
-          Text(
-            milestoneTitle.toUpperCase(),
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: textSecondary,
-              letterSpacing: 2.0,
             ),
           ),
 

@@ -3,46 +3,96 @@ import 'dart:ui';
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../services/auth_service.dart';
-import '../services/milestone_service.dart';
 import '../widgets/page_header.dart';
-import '../widgets/status_bar_blur.dart';
 import '../widgets/tappable.dart';
 import '../widgets/user_card.dart';
 
-// ── Profile screen ────────────────────────────────────────────────────────────
+// ── Profile modal ─────────────────────────────────────────────────────────────
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+Future<void> showProfileModal(BuildContext context) {
+  HapticFeedback.lightImpact();
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Profile',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 320),
+    transitionBuilder: (_, anim, __, child) {
+      final curved = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutQuart,
+        reverseCurve: Curves.easeOutCubic,
+      );
+      return Stack(
+        children: [
+          // Blurred backdrop
+          AnimatedBuilder(
+            animation: curved,
+            builder: (_, __) => BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 12 * curved.value,
+                sigmaY: 12 * curved.value,
+              ),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.45 * curved.value),
+              ),
+            ),
+          ),
+          // Sliding modal
+          SlideTransition(
+            position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(curved),
+            child: child,
+          ),
+        ],
+      );
+    },
+    pageBuilder: (_, __, ___) => const _ProfileSheet(),
+  );
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileSheet extends StatefulWidget {
+  const _ProfileSheet();
+
+  @override
+  State<_ProfileSheet> createState() => _ProfileSheetState();
+}
+
+class _ProfileSheetState extends State<_ProfileSheet>
+    with SingleTickerProviderStateMixin {
   final _scrollCtrl = ScrollController();
   String _firstName = '';
   String _memberSince = '';
-  bool _showFloatingBack = false;
-  double _topPad = 0;
+  double _dragX = 0;
+  late AnimationController _snapBackCtrl;
+  late Animation<double> _snapBackAnim;
+  double _snapBackFrom = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfileData();
-    _scrollCtrl.addListener(_onScroll);
+    _snapBackCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _snapBackAnim = CurvedAnimation(parent: _snapBackCtrl, curve: Curves.easeOutCubic);
+    _snapBackCtrl.addListener(() {
+      setState(() => _dragX = _snapBackFrom * (1 - _snapBackAnim.value));
+    });
   }
 
-  void _onScroll() {
-    // Back button lives at topPad + 16 (header padding) and is 40px tall
-    final show = _scrollCtrl.offset > _topPad + 56;
-    if (show != _showFloatingBack) setState(() => _showFloatingBack = show);
+  @override
+  void dispose() {
+    _snapBackCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfileData() async {
@@ -59,20 +109,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final dt = DateTime.tryParse(data['created_at'] as String? ?? '');
       setState(() {
         _firstName = (data['first_name'] as String?) ?? '';
-        _memberSince = dt != null ? _formatDate(dt) : '';
+        _memberSince = dt != null ? _fmtDate(dt) : '';
       });
     } catch (_) {}
   }
 
-  static String _formatDate(DateTime dt) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[dt.month - 1]} ${dt.year}';
+  static String _fmtDate(DateTime dt) {
+    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${m[dt.month - 1]} ${dt.year}';
   }
 
-  static int _computeStreak(List<Map<String, dynamic>> alignments) {
+  static int _streak(List<Map<String, dynamic>> alignments) {
     final dates = alignments
         .where((a) => a['is_analyzing'] != true && a['created_at'] != null)
         .map((a) {
@@ -85,675 +132,233 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .toSet()
         .toList()
       ..sort((a, b) => b.compareTo(a));
-
     if (dates.isEmpty) return 0;
-
     final now = DateTime.now();
-    final today     = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-
     if (dates.first != today && dates.first != yesterday) return 0;
-
-    int streak = 1;
+    int s = 1;
     for (int i = 0; i < dates.length - 1; i++) {
-      if (dates[i].difference(dates[i + 1]).inDays == 1) {
-        streak++;
-      } else {
-        break;
-      }
+      if (dates[i].difference(dates[i + 1]).inDays == 1) s++;
+      else break;
     }
-    return streak;
+    return s;
   }
 
+  void _onDragUpdate(DragUpdateDetails d) {
+    if (_snapBackCtrl.isAnimating) _snapBackCtrl.stop();
+    final sw = MediaQuery.of(context).size.width;
+    setState(() => _dragX = (_dragX + d.delta.dx).clamp(0.0, sw.toDouble()));
+  }
 
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
+  void _onDragEnd(DragEndDetails d) {
+    final sw = MediaQuery.of(context).size.width;
+    if (_dragX > sw * 0.35 || d.velocity.pixelsPerSecond.dx > 600) {
+      Navigator.of(context).pop();
+    } else {
+      _snapBackFrom = _dragX;
+      _snapBackCtrl.forward(from: 0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user   = Supabase.instance.client.auth.currentUser;
-    final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final email  = user?.email ?? '';
-
     final topPad = MediaQuery.of(context).padding.top;
-    _topPad = topPad; // keep in sync for scroll listener
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final sh = MediaQuery.of(context).size.height;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 38, cornerSmoothing: 0.6);
+    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            top: false,
-            child: CustomScrollView(
-              controller: _scrollCtrl,
-              slivers: [
-                // Space for status bar so content starts below it
-                SliverToBoxAdapter(child: SizedBox(height: topPad)),
-
-                SliverToBoxAdapter(
-                  child: PageHeader(title: 'Profile', subtitle: email),
-                ),
-
-            SliverToBoxAdapter(
+    return Material(
+      type: MaterialType.transparency,
+      child: GestureDetector(
+        onHorizontalDragUpdate: _onDragUpdate,
+        onHorizontalDragEnd: _onDragEnd,
+        child: Transform.translate(
+          offset: Offset(_dragX, 0),
+          child: Align(
+              alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                  valueListenable: alignmentsNotifier,
-                  builder: (context, alignments, _) {
-                    final count = alignments
-                        .where((a) => a['is_analyzing'] != true)
-                        .length;
-                    final current = MilestoneService.currentMilestone(count);
-                    final next    = MilestoneService.nextMilestone(count);
-                    final streak  = _computeStreak(alignments);
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 24),
-
-                        // ── User card ─────────────────────────────────────
-                        UserCard(
-                          firstName:      _firstName,
-                          memberSince:    _memberSince,
-                          analysisCount:  count,
-                          streak:         streak,
-                          milestoneTitle: current.title,
-                          isDark:         isDark,
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // ── Theme switcher ────────────────────────────────
-                        Container(
-                          width: double.infinity,
-                          decoration: ShapeDecoration(
-                            color: isDark
-                                ? const Color(0xFF1C1C1E)
-                                : Colors.white,
-                            shape: SmoothRectangleBorder(
-                              borderRadius: SmoothBorderRadius(
-                                cornerRadius: 16,
-                                cornerSmoothing: 0.6,
-                              ),
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Center(child: _PullCordThemeSwitcher(isDark: isDark)),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Milestone badge + progress ────────────────────
-                        _MilestoneSection(
-                          current: current,
-                          next:    next,
-                          count:   count,
-                          scheme:  scheme,
-                          isDark:  isDark,
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Sign out ──────────────────────────────────────
-                        Tappable(
-                          onTap: () async => AuthService.signOut(),
-                          child: Container(
-                            width: double.infinity,
-                            height: 52,
-                            decoration: ShapeDecoration(
-                              color: Colors.red.shade600.withAlpha(20),
-                              shape: SmoothRectangleBorder(
-                                borderRadius: SmoothBorderRadius(
-                                  cornerRadius: 14,
-                                  cornerSmoothing: 0.6,
-                                ),
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Sign Out',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.red.shade500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 40),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-          const StatusBarBlur(),
-
-          // Floating back button — rendered above blur, ignored when hidden
-          Positioned(
-            top: topPad + 16,
-            left: 20,
-            child: IgnorePointer(
-              ignoring: !_showFloatingBack,
-              child: AnimatedOpacity(
-                opacity: _showFloatingBack ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                child: AnimatedScale(
-                  scale: _showFloatingBack ? 1.0 : 0.7,
-                  duration: const Duration(milliseconds: 250),
-                  curve: _showFloatingBack ? Curves.easeOutBack : Curves.easeIn,
-                  child: Tappable(
-                    onTap: () => Navigator.maybePop(context),
-                    child: ClipOval(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : Colors.black.withValues(alpha: 0.07),
-                          child: Icon(
-                            CupertinoIcons.chevron_left,
-                            color: scheme.onSurface,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Milestone section ─────────────────────────────────────────────────────────
-
-(Color, Color) _milestoneGradient(String title) =>
-    kMilestoneGradients[title] ?? kMilestoneGradients['Newcomer']!;
-
-class _MilestoneSection extends StatefulWidget {
-  final MilestoneInfo current;
-  final MilestoneInfo? next;
-  final int count;
-  final ColorScheme scheme;
-  final bool isDark;
-
-  const _MilestoneSection({
-    required this.current,
-    required this.next,
-    required this.count,
-    required this.scheme,
-    required this.isDark,
-  });
-
-  @override
-  State<_MilestoneSection> createState() => _MilestoneSectionState();
-}
-
-class _MilestoneSectionState extends State<_MilestoneSection> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final (c1, c2) = _milestoneGradient(widget.current.title);
-    final nextM = widget.next;
-    final progress = nextM == null
-        ? 1.0
-        : (widget.count - widget.current.count) /
-          (nextM.count - widget.current.count);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // ── Hero card ──────────────────────────────────────────────────────
-        Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: Color.lerp(c1, c2, 0.5)!.withAlpha(widget.isDark ? 22 : 14),
-            shape: SmoothRectangleBorder(
-              borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
-              side: BorderSide(color: c1.withAlpha(70), width: 1),
-            ),
-            shadows: [
-              BoxShadow(
-                color: c1.withAlpha(widget.isDark ? 55 : 35),
-                blurRadius: 32,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
-                child: Column(
-                  children: [
-                    // Glowing icon squircle
-                    Container(
-                      width: 84,
-                      height: 84,
+                padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+                child: ClipSmoothRect(
+                  radius: cardRadius,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+                    child: Container(
+                      height: sh - topPad - bottomPad - 20,
                       decoration: ShapeDecoration(
-                        color: c1.withAlpha(widget.isDark ? 30 : 18),
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.45)
+                            : Colors.white.withValues(alpha: 0.92),
                         shape: SmoothRectangleBorder(
-                          borderRadius: SmoothBorderRadius(
-                            cornerRadius: 22,
-                            cornerSmoothing: 0.6,
+                          borderRadius: cardRadius,
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.black.withValues(alpha: 0.08),
+                            width: 0.8,
                           ),
-                          side: BorderSide(color: c1.withAlpha(60), width: 1),
                         ),
-                        shadows: [
-                          BoxShadow(
-                            color: c1.withAlpha(widget.isDark ? 90 : 60),
-                            blurRadius: 36,
-                            spreadRadius: 0,
-                          ),
-                        ],
                       ),
-                      child: Center(
-                        child: HugeIcon(
-                          icon: widget.current.icon,
-                          size: 38,
-                          color: c1,
+                      child: ClipSmoothRect(
+                        radius: cardRadius,
+                        child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                          valueListenable: alignmentsNotifier,
+                          builder: (context, alignments, _) {
+                            final count = alignments.where((a) => a['is_analyzing'] != true).length;
+                            final streak = _streak(alignments);
+                            return Stack(
+                              children: [
+                                ListView(
+                              controller: _scrollCtrl,
+                              padding: EdgeInsets.fromLTRB(20, 88, 20, 40),
+                              children: [
+                                const SizedBox(height: 0),
+                                UserCard(
+                                  firstName: _firstName,
+                                  memberSince: _memberSince,
+                                  analysisCount: count,
+                                  streak: streak,
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 28),
+                                Container(
+                                  decoration: ShapeDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.06)
+                                        : Colors.black.withValues(alpha: 0.04),
+                                    shape: SmoothRectangleBorder(
+                                      borderRadius: SmoothBorderRadius(cornerRadius: 16, cornerSmoothing: 0.6),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 32),
+                                  child: Center(child: _PullCordThemeSwitcher(isDark: isDark)),
+                                ),
+                                const SizedBox(height: 32),
+                                Tappable(
+                                  onTap: () async => AuthService.signOut(),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 52,
+                                    decoration: ShapeDecoration(
+                                      color: Colors.red.shade600.withAlpha(20),
+                                      shape: SmoothRectangleBorder(
+                                        borderRadius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'Sign Out',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.red.shade500,
+                                          decoration: TextDecoration.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // ── Pinned gradient header ──
+                            Positioned(
+                              top: 0, left: 0, right: 0,
+                              child: _ProfileGradientHeader(isDark: isDark, email: email),
+                            ),
+                          ],
+                            );
+                          },
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      widget.current.title,
-                      style: AppTypography.heading2(
-                        color: widget.isDark ? Colors.white : const Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    if (widget.current.flavourText != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.current.flavourText!,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: widget.isDark
-                              ? Colors.white.withAlpha(100)
-                              : const Color(0xFF1A1A1A).withAlpha(85),
-                          fontStyle: FontStyle.italic,
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // Gradient progress strip flush to card bottom
-              LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                minHeight: 5,
-                backgroundColor: c1.withAlpha(widget.isDark ? 40 : 25),
-                valueColor: AlwaysStoppedAnimation<Color>(c1),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Progress hint / max rank
-        Center(
-          child: nextM != null
-              ? Text(
-                  '${nextM.count - widget.count} '
-                  '${nextM.count - widget.count == 1 ? 'analysis' : 'analyses'} '
-                  'until ${nextM.title}',
-                  style: AppTypography.dataSmall(color: widget.scheme.onSurfaceVariant)
-                      .copyWith(fontWeight: FontWeight.w500),
-                )
-              : Text(
-                  'Maximum rank achieved',
-                  style: AppTypography.dataSmall(color: c1)
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-        ),
-
-        const SizedBox(height: 28),
-
-        // ── Journey list header ────────────────────────────────────────────
-        GestureDetector(
-          onTap: () => setState(() => _expanded = !_expanded),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 10),
-            child: Row(
-              children: [
-                Text(
-                  'Journey',
-                  style: AppTypography.sectionHeader(color: widget.scheme.onSurfaceVariant),
-                ),
-                const Spacer(),
-                AnimatedRotation(
-                  turns: _expanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  child: Icon(
-                    CupertinoIcons.chevron_down,
-                    size: 13,
-                    color: widget.scheme.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
-
-        ClipRect(
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: _expanded
-                ? _JourneyList(
-                    count: widget.count,
-                    current: widget.current,
-                    isDark: widget.isDark,
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ),
-      ],
-    );
+      );
   }
 }
 
-// ── Journey timeline list ─────────────────────────────────────────────────────
 
-class _JourneyList extends StatelessWidget {
-  final int count;
-  final MilestoneInfo current;
+// ── Profile gradient header ───────────────────────────────────────────────────
+class _ProfileGradientHeader extends StatelessWidget {
   final bool isDark;
-
-  const _JourneyList({
-    required this.count,
-    required this.current,
-    required this.isDark,
-  });
+  final String email;
+  const _ProfileGradientHeader({required this.isDark, required this.email});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(kMilestones.length, (i) {
-          final m = kMilestones[i];
-          return _JourneyRow(
-            milestone: m,
-            unlocked:  count >= m.count,
-            isCurrent: m.title == current.title,
-            isFirst:   i == 0,
-            isLast:    i == kMilestones.length - 1,
-            isDark:    isDark,
-          );
-        }),
-      ),
-    );
-  }
-}
+    const topPad = 8.0;
+    const titleH = 52.0;
+    const totalH = 72.0;
+    final fadeColor = isDark ? Colors.black : Colors.white;
+    final a = isDark ? 0.65 : 0.85;
 
-class _JourneyRow extends StatelessWidget {
-  final MilestoneInfo milestone;
-  final bool unlocked;
-  final bool isCurrent;
-  final bool isFirst;
-  final bool isLast;
-  final bool isDark;
-
-  const _JourneyRow({
-    required this.milestone,
-    required this.unlocked,
-    required this.isCurrent,
-    required this.isFirst,
-    required this.isLast,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final (c1, c2) = _milestoneGradient(milestone.title);
-
-    final lineColor = unlocked
-        ? c1.withAlpha(isDark ? 90 : 65)
-        : (isDark ? Colors.white.withAlpha(18) : Colors.black.withAlpha(12));
-
-    final node = Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: unlocked
-            ? LinearGradient(
-                colors: [c1, c2],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: unlocked
-            ? null
-            : (isDark ? Colors.white.withAlpha(16) : Colors.black.withAlpha(10)),
-        boxShadow: isCurrent
-            ? [
-                BoxShadow(
-                  color: c1.withAlpha(isDark ? 110 : 80),
-                  blurRadius: 14,
-                  spreadRadius: 0,
-                ),
-              ]
-            : null,
-      ),
-      child: Center(
-        child: HugeIcon(
-          icon: milestone.icon,
-          size: 18,
-          color: unlocked
-              ? Colors.white.withAlpha(230)
-              : (isDark ? Colors.white.withAlpha(50) : Colors.black.withAlpha(40)),
-        ),
-      ),
-    );
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SizedBox(
+      height: totalH,
+      child: Stack(
         children: [
-          // Timeline: line above + node + line below
-          SizedBox(
-            width: 56,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!isFirst)
-                  Expanded(
-                    child: Center(child: Container(width: 1.5, color: lineColor)),
-                  )
-                else
-                  const SizedBox(height: 8),
-                node,
-                if (!isLast)
-                  Expanded(
-                    child: Center(child: Container(width: 1.5, color: lineColor)),
-                  )
-                else
-                  const SizedBox(height: 8),
-              ],
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    fadeColor.withValues(alpha: a),
+                    fadeColor.withValues(alpha: a * 0.85),
+                    fadeColor.withValues(alpha: a * 0.65),
+                    fadeColor.withValues(alpha: a * 0.42),
+                    fadeColor.withValues(alpha: a * 0.22),
+                    fadeColor.withValues(alpha: a * 0.08),
+                    fadeColor.withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.20, 0.40, 0.58, 0.74, 0.88, 1.0],
+                ),
+              ),
             ),
           ),
-
-          // Title + count
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+          Padding(
+            padding: const EdgeInsets.only(top: topPad),
+            child: SizedBox(
+              height: titleH,
+              child: Row(
                 children: [
-                  Text(
-                    milestone.title,
-                    style: AppTypography.milestoneRowTitle(
-                      color: unlocked
-                          ? (isDark ? Colors.white : const Color(0xFF1A1A1A))
-                          : (isDark
-                              ? Colors.white.withAlpha(50)
-                              : const Color(0xFF1A1A1A).withAlpha(50)),
-                      weight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 16, 0),
+                      child: Icon(
+                        CupertinoIcons.arrow_left,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    milestone.count == 0
-                        ? 'From the start'
-                        : '${milestone.count} analyses',
-                    style: AppTypography.dataSmall(
-                      color: unlocked
-                          ? (isDark
-                              ? Colors.white.withAlpha(75)
-                              : const Color(0xFF1A1A1A).withAlpha(65))
-                          : (isDark
-                              ? Colors.white.withAlpha(30)
-                              : const Color(0xFF1A1A1A).withAlpha(30)),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'Profile',
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 56),
                 ],
               ),
             ),
           ),
-
-          // Trailing icon
-          SizedBox(
-            width: 40,
-            child: Center(
-              child: unlocked
-                  ? Icon(CupertinoIcons.checkmark_circle_fill, size: 18, color: c1)
-                  : Icon(CupertinoIcons.lock_fill,
-                      size: 14,
-                      color: isDark
-                          ? Colors.white.withAlpha(30)
-                          : Colors.black.withAlpha(25)),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Settings widgets ──────────────────────────────────────────────────────────
-
-class _SettingsRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SettingsRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Tappable(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, color: scheme.onSurfaceVariant, size: 20),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ),
-            Icon(CupertinoIcons.chevron_right,
-                color: scheme.onSurfaceVariant, size: 15),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeRow extends StatelessWidget {
-  const _ThemeRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Icon(CupertinoIcons.moon_fill, color: scheme.onSurfaceVariant, size: 20),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              'Dark Mode',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: themeNotifier,
-            builder: (context, mode, _) => CupertinoSwitch(
-              value: isDark,
-              activeTrackColor: scheme.primary,
-              onChanged: (on) {
-                final m = on ? ThemeMode.dark : ThemeMode.light;
-                themeNotifier.value = m;
-                saveTheme(m);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 50),
-      child: Divider(
-        height: 0.5,
-        thickness: 0.5,
-        color: Theme.of(context).colorScheme.outline.withAlpha(80),
       ),
     );
   }

@@ -12,6 +12,81 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_typography.dart';
 
+Future<void> showGlobeModal(BuildContext context) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Globe',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 320),
+    transitionBuilder: (_, anim, __, child) {
+      final curved = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutQuart,
+        reverseCurve: Curves.easeOutCubic,
+      );
+      return Stack(
+        children: [
+          AnimatedBuilder(
+            animation: curved,
+            builder: (_, __) => BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 12 * curved.value,
+                sigmaY: 12 * curved.value,
+              ),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.45 * curved.value),
+              ),
+            ),
+          ),
+          SlideTransition(
+            position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(curved),
+            child: child,
+          ),
+        ],
+      );
+    },
+    pageBuilder: (_, __, ___) => const _GlobeSheet(),
+  );
+}
+
+class _GlobeSheet extends StatefulWidget {
+  const _GlobeSheet({super.key});
+
+  @override
+  State<_GlobeSheet> createState() => _GlobeSheetState();
+}
+
+class _GlobeSheetState extends State<_GlobeSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final sh = MediaQuery.of(context).size.height;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 38, cornerSmoothing: 0.6);
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+          child: ClipSmoothRect(
+            radius: cardRadius,
+            child: SizedBox(
+              height: sh - topPad - bottomPad - 20,
+              child: const GlobeScreen(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Globe screen (full content, used inside modal) ────────────────────────────
+
 enum _GlobeView { analyses, markets }
 
 class GlobeScreen extends StatefulWidget {
