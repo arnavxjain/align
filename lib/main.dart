@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,11 +11,26 @@ import 'screens/login.dart';
 import 'screens/onboarding.dart';
 import 'screens/splash.dart';
 import 'services/auth_service.dart';
-import 'services/subscription_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Catch unhandled Flutter framework errors — log in debug, suppress stack
+  // traces in release so internal paths are never exposed to the user.
+  FlutterError.onError = (details) {
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    } else {
+      debugPrint('Unhandled Flutter error: ${details.exceptionAsString()}');
+    }
+  };
+
+  // Catch unhandled async errors on the root isolate.
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Unhandled platform error: $error');
+    return true; // mark as handled so the app doesn't crash
+  };
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
@@ -20,7 +38,6 @@ void main() async {
   );
 
   await loadSavedTheme();
-  await SubscriptionService.instance.init();
 
   runApp(const MyApp());
 }
@@ -107,7 +124,6 @@ class _AuthGateState extends State<AuthGate> with SingleTickerProviderStateMixin
     if (_checkedUserId == userId) return;
     _checkedUserId = userId;
     _hasProfile = null;
-    SubscriptionService.instance.identify(userId);
     AuthService.hasProfile(userId).then((result) {
       if (mounted) setState(() => _hasProfile = result);
     });

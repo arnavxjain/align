@@ -18,6 +18,15 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		F1B001001CF9000F007C1001 /* icon_light_mode.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A001001CF9000F007C1001 /* icon_light_mode.png */; };
+		F1B002001CF9000F007C1002 /* icon_cloudy_sky.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A002001CF9000F007C1002 /* icon_cloudy_sky.png */; };
+		F1B003001CF9000F007C1003 /* icon_cool_candy.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A003001CF9000F007C1003 /* icon_cool_candy.png */; };
+		F1B004001CF9000F007C1004 /* icon_gradient.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A004001CF9000F007C1004 /* icon_gradient.png */; };
+		F1B005001CF9000F007C1005 /* icon_hard_candy.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A005001CF9000F007C1005 /* icon_hard_candy.png */; };
+		F1B006001CF9000F007C1006 /* icon_mint_dark.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A006001CF9000F007C1006 /* icon_mint_dark.png */; };
+		F1B007001CF9000F007C1007 /* icon_mint_white.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A007001CF9000F007C1007 /* icon_mint_white.png */; };
+		F1B008001CF9000F007C1008 /* icon_pulse.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A008001CF9000F007C1008 /* icon_pulse.png */; };
+		F1B009001CF9000F007C1009 /* icon_sea_green.png in Resources */ = {isa = PBXBuildFile; fileRef = F1A009001CF9000F007C1009 /* icon_sea_green.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +78,15 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B064CE6694DBDD1545B26F1B /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		F1A001001CF9000F007C1001 /* icon_light_mode.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_light_mode.png; sourceTree = "<group>"; };
+		F1A002001CF9000F007C1002 /* icon_cloudy_sky.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_cloudy_sky.png; sourceTree = "<group>"; };
+		F1A003001CF9000F007C1003 /* icon_cool_candy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_cool_candy.png; sourceTree = "<group>"; };
+		F1A004001CF9000F007C1004 /* icon_gradient.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_gradient.png; sourceTree = "<group>"; };
+		F1A005001CF9000F007C1005 /* icon_hard_candy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_hard_candy.png; sourceTree = "<group>"; };
+		F1A006001CF9000F007C1006 /* icon_mint_dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_mint_dark.png; sourceTree = "<group>"; };
+		F1A007001CF9000F007C1007 /* icon_mint_white.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_mint_white.png; sourceTree = "<group>"; };
+		F1A008001CF9000F007C1008 /* icon_pulse.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_pulse.png; sourceTree = "<group>"; };
+		F1A009001CF9000F007C1009 /* icon_sea_green.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_sea_green.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,6 +163,15 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				F1A001001CF9000F007C1001 /* icon_light_mode.png */,
+				F1A002001CF9000F007C1002 /* icon_cloudy_sky.png */,
+				F1A003001CF9000F007C1003 /* icon_cool_candy.png */,
+				F1A004001CF9000F007C1004 /* icon_gradient.png */,
+				F1A005001CF9000F007C1005 /* icon_hard_candy.png */,
+				F1A006001CF9000F007C1006 /* icon_mint_dark.png */,
+				F1A007001CF9000F007C1007 /* icon_mint_white.png */,
+				F1A008001CF9000F007C1008 /* icon_pulse.png */,
+				F1A009001CF9000F007C1009 /* icon_sea_green.png */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -278,6 +305,15 @@
 				47BE9DDB2FC8D37B009C9C5E /* GoogleService-Info.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				F1B001001CF9000F007C1001 /* icon_light_mode.png in Resources */,
+				F1B002001CF9000F007C1002 /* icon_cloudy_sky.png in Resources */,
+				F1B003001CF9000F007C1003 /* icon_cool_candy.png in Resources */,
+				F1B004001CF9000F007C1004 /* icon_gradient.png in Resources */,
+				F1B005001CF9000F007C1005 /* icon_hard_candy.png in Resources */,
+				F1B006001CF9000F007C1006 /* icon_mint_dark.png in Resources */,
+				F1B007001CF9000F007C1007 /* icon_mint_white.png in Resources */,
+				F1B008001CF9000F007C1008 /* icon_pulse.png in Resources */,
+				F1B009001CF9000F007C1009 /* icon_sea_green.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

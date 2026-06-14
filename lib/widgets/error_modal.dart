@@ -13,10 +13,25 @@ Future<void> showErrorModal(
   VoidCallback? onPrimary,
   String dismissLabel = 'Dismiss',
 }) {
-  return showCupertinoModalPopup<void>(
+  return showGeneralDialog<void>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.4),
-    builder: (_) => _ErrorModalSheet(
+    barrierDismissible: true,
+    barrierLabel: 'Error',
+    barrierColor: Colors.black.withValues(alpha: 0.5),
+    transitionDuration: const Duration(milliseconds: 280),
+    transitionBuilder: (_, anim, __, child) {
+      return SlideTransition(
+        position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: anim,
+            curve: Curves.easeOutQuart,
+            reverseCurve: Curves.easeOutCubic,
+          ),
+        ),
+        child: child,
+      );
+    },
+    pageBuilder: (ctx, _, __) => _ErrorSheet(
       title: title,
       message: message,
       primaryLabel: primaryLabel,
@@ -26,14 +41,14 @@ Future<void> showErrorModal(
   );
 }
 
-class _ErrorModalSheet extends StatelessWidget {
+class _ErrorSheet extends StatelessWidget {
   final String title;
   final String message;
   final String primaryLabel;
   final VoidCallback? onPrimary;
   final String dismissLabel;
 
-  const _ErrorModalSheet({
+  const _ErrorSheet({
     required this.title,
     required this.message,
     required this.primaryLabel,
@@ -46,108 +61,100 @@ class _ErrorModalSheet extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 26, cornerSmoothing: 0.6);
     const errorRed = Color(0xFFFF3B30);
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPad),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.72)
-                  : Colors.white.withValues(alpha: 0.84),
-              border: Border(
-                top: BorderSide(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.black.withValues(alpha: 0.08),
-                  width: 0.5,
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+        child: ClipSmoothRect(
+          radius: cardRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Container(
+              decoration: ShapeDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.92),
+                shape: SmoothRectangleBorder(
+                  borderRadius: cardRadius,
+                  side: BorderSide(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
                 ),
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.25)
-                        : Colors.black.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Icon
-                Container(
-                  width: 68,
-                  height: 68,
-                  decoration: BoxDecoration(
-                    color: errorRed.withValues(alpha: isDark ? 0.15 : 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: errorRed.withValues(alpha: 0.25),
-                      width: 1,
+              padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: errorRed.withValues(alpha: isDark ? 0.15 : 0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: errorRed.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.exclamationmark_circle,
+                      size: 24,
+                      color: errorRed,
                     ),
                   ),
-                  child: const Icon(
-                    CupertinoIcons.exclamationmark_circle,
-                    size: 30,
-                    color: errorRed,
+                  const SizedBox(height: 14),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                      letterSpacing: -0.3,
+                      decoration: TextDecoration.none,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.3,
+                  const SizedBox(height: 6),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: scheme.onSurfaceVariant,
+                      height: 1.45,
+                      decoration: TextDecoration.none,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: scheme.onSurfaceVariant,
-                    height: 1.45,
+                  const SizedBox(height: 24),
+                  if (onPrimary != null) ...[
+                    _SheetButton(
+                      label: primaryLabel,
+                      backgroundColor: scheme.primary,
+                      textColor: Colors.white,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onPrimary!();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  _SheetButton(
+                    label: dismissLabel,
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+                    textColor: scheme.onSurface,
+                    onTap: () => Navigator.pop(context),
                   ),
-                ),
-                const SizedBox(height: 28),
-
-                if (onPrimary != null) ...[
-                  _ModalButton(
-                    label: primaryLabel,
-                    backgroundColor: scheme.primary,
-                    textColor: Colors.white,
-                    onTap: () {
-                      Navigator.pop(context);
-                      onPrimary!();
-                    },
-                  ),
-                  const SizedBox(height: 10),
                 ],
-                _ModalButton(
-                  label: dismissLabel,
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
-                  textColor: scheme.onSurface,
-                  onTap: () => Navigator.pop(context),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -156,13 +163,13 @@ class _ErrorModalSheet extends StatelessWidget {
   }
 }
 
-class _ModalButton extends StatelessWidget {
+class _SheetButton extends StatelessWidget {
   final String label;
   final Color backgroundColor;
   final Color textColor;
   final VoidCallback onTap;
 
-  const _ModalButton({
+  const _SheetButton({
     required this.label,
     required this.backgroundColor,
     required this.textColor,
@@ -179,8 +186,7 @@ class _ModalButton extends StatelessWidget {
         style: TextButton.styleFrom(
           backgroundColor: backgroundColor,
           shape: SmoothRectangleBorder(
-            borderRadius:
-                SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
+            borderRadius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
           ),
           padding: EdgeInsets.zero,
         ),

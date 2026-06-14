@@ -113,7 +113,7 @@ class _DeleteConfirmSheet extends StatelessWidget {
   }
 }
 
-class _Button extends StatelessWidget {
+class _Button extends StatefulWidget {
   final String label;
   final Color bgColor;
   final Color textColor;
@@ -127,25 +127,42 @@ class _Button extends StatelessWidget {
   });
 
   @override
+  State<_Button> createState() => _ButtonState();
+}
+
+class _ButtonState extends State<_Button> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 46,
-      child: TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(
-          backgroundColor: bgColor,
-          shape: SmoothRectangleBorder(
-            borderRadius: SmoothBorderRadius(cornerRadius: 12, cornerSmoothing: 0.6),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 80),
+        opacity: _pressed ? 0.5 : 1.0,
+        child: Container(
+          width: double.infinity,
+          height: 46,
+          decoration: ShapeDecoration(
+            color: widget.bgColor,
+            shape: SmoothRectangleBorder(
+              borderRadius: SmoothBorderRadius(cornerRadius: 12, cornerSmoothing: 0.6),
+            ),
           ),
-          padding: EdgeInsets.zero,
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: widget.textColor,
+              decoration: TextDecoration.none,
+            ),
           ),
         ),
       ),

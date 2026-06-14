@@ -2,14 +2,21 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
-import 'subscription_service.dart';
+
+// Max URL length accepted before truncating — prevents excessively large requests.
+const _kMaxUrlLength = 2048;
 
 class GeminiService {
-  static String _buildEndpoint({bool? usePro}) {
-    final model = (usePro ?? SubscriptionService.instance.isPro.value)
-        ? 'gemini-2.5-pro'
-        : 'gemini-2.5-flash';
-    return 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
+  static String _buildEndpoint() {
+    return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  }
+
+  /// Trims a URL to a safe length and strips leading/trailing whitespace.
+  static String _sanitizeUrl(String url) {
+    final trimmed = url.trim();
+    return trimmed.length > _kMaxUrlLength
+        ? trimmed.substring(0, _kMaxUrlLength)
+        : trimmed;
   }
 
   static Future<List<Map<String, dynamic>>?> analyze({
@@ -18,8 +25,9 @@ class GeminiService {
     required String prompt,
     bool useSearch = false,
     String? geminiFileUri,
-    bool? usePro,
+
   }) async {
+    final safeUrl = _sanitizeUrl(url);
     final List<Map<String, dynamic>> parts;
 
     if (geminiFileUri != null) {
@@ -30,12 +38,12 @@ class GeminiService {
     } else if (isYouTube) {
       parts = [
         {'text': prompt},
-        {'fileData': {'mimeType': 'video/youtube', 'fileUri': sanitizeYouTubeUrl(url)}},
+        {'fileData': {'mimeType': 'video/youtube', 'fileUri': sanitizeYouTubeUrl(safeUrl)}},
       ];
     } else {
-      final text = await _fetchText(url);
+      final text = await _fetchText(safeUrl);
       if (text == null) return null;
-      parts = [{'text': '$prompt\n\nContent from $url:\n$text'}];
+      parts = [{'text': '$prompt\n\nContent from $safeUrl:\n$text'}];
     }
 
     final body = <String, dynamic>{
@@ -52,7 +60,7 @@ class GeminiService {
     try {
       var response = await http
           .post(
-            Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
+            Uri.parse('${_buildEndpoint()}?key=${AppConfig.geminiApiKey}'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
@@ -64,7 +72,7 @@ class GeminiService {
         await Future.delayed(Duration(seconds: delay + 1));
         response = await http
             .post(
-              Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
+              Uri.parse('${_buildEndpoint()}?key=${AppConfig.geminiApiKey}'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(body),
             )
@@ -103,6 +111,64 @@ class GeminiService {
     return fetchArticleTitle(url);
   }
 
+  /// Generates a concise title for any content type using Gemini.
+  static Future<String?> generateTitle({
+    required String url,
+    required bool isYouTube,
+    String? geminiFileUri,
+  }) async {
+    final safeUrl = _sanitizeUrl(url);
+    const prompt =
+        'Write a concise, specific headline for this content — like a news headline. '
+        'Maximum 10 words. Capture the main subject or claim. '
+        'Return ONLY the headline text — no quotes, no full stop, nothing else.';
+
+    final List<Map<String, dynamic>> parts;
+    if (geminiFileUri != null) {
+      parts = [
+        {'text': prompt},
+        {'fileData': {'mimeType': 'video/mp4', 'fileUri': geminiFileUri}},
+      ];
+    } else if (isYouTube) {
+      parts = [
+        {'text': prompt},
+        {'fileData': {'mimeType': 'video/youtube', 'fileUri': sanitizeYouTubeUrl(safeUrl)}},
+      ];
+    } else {
+      final text = await _fetchText(safeUrl);
+      if (text == null) return null;
+      parts = [{'text': '$prompt\n\nContent from $safeUrl:\n$text'}];
+    }
+
+    final body = <String, dynamic>{
+      'contents': [{'parts': parts}],
+      'generationConfig': {
+        'thinkingConfig': {'thinkingBudget': 0},
+        'maxOutputTokens': 40,
+      },
+    };
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${_buildEndpoint()}?key=${AppConfig.geminiApiKey}'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) return null;
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final parts2 = (json['candidates']?[0]?['content']?['parts'] as List?) ?? [];
+      return parts2
+          .whereType<Map>()
+          .where((p) => p['thought'] != true && p['text'] != null)
+          .map((p) => (p['text'] as String).trim())
+          .firstOrNull;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<String?> fetchArticleTitle(String url) async {
     try {
       final response = await http
@@ -135,13 +201,22 @@ class GeminiService {
       final tag = ogTag.group(0)!;
       final c = RegExp(r'content="([^"]+)"').firstMatch(tag) ??
                 RegExp(r"content='([^']+)'").firstMatch(tag);
-      if (c != null) return _htmlDecode(c.group(1)!);
+      if (c != null) return _truncateTitle(_htmlDecode(c.group(1)!));
     }
     // Fallback to <title>
     final title = RegExp(r'<title[^>]*>(.*?)</title>', caseSensitive: false, dotAll: true)
         .firstMatch(html);
-    if (title != null) return _htmlDecode(title.group(1)!.trim());
+    if (title != null) return _truncateTitle(_htmlDecode(title.group(1)!.trim()));
     return null;
+  }
+
+  static String _truncateTitle(String title) {
+    // Break at first newline (common in social captions used as og:title)
+    final firstLine = title.split('\n').first.trim();
+    const maxLen = 80;
+    if (firstLine.length <= maxLen) return firstLine;
+    final cut = firstLine.lastIndexOf(' ', maxLen);
+    return '${firstLine.substring(0, cut > 0 ? cut : maxLen)}…';
   }
 
   static String _htmlDecode(String s) => s
@@ -204,13 +279,13 @@ class GeminiService {
     required String url,
     required bool isYouTube,
     String? geminiFileUri,
-    bool? usePro,
+
   }) async {
     final result = await analyze(
-      url: url,
+      url: _sanitizeUrl(url),
       isYouTube: isYouTube,
       geminiFileUri: geminiFileUri,
-      usePro: usePro,
+      
       prompt:
           'Identify ALL countries that have any meaningful connection to this content. '
           'Include countries where: events or news takes place, people mentioned were born or are from, '
@@ -244,7 +319,7 @@ class GeminiService {
   static Future<String?> chat({
     required String systemContext,
     required List<Map<String, dynamic>> history,
-    bool? usePro,
+    
   }) async {
     final contents = <Map<String, dynamic>>[];
     for (int i = 0; i < history.length; i++) {
@@ -272,7 +347,7 @@ class GeminiService {
     try {
       var response = await http
           .post(
-            Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
+            Uri.parse('${_buildEndpoint()}?key=${AppConfig.geminiApiKey}'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
@@ -284,7 +359,7 @@ class GeminiService {
         await Future.delayed(Duration(seconds: delay + 1));
         response = await http
             .post(
-              Uri.parse('${_buildEndpoint(usePro: usePro)}?key=${AppConfig.geminiApiKey}'),
+              Uri.parse('${_buildEndpoint()}?key=${AppConfig.geminiApiKey}'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(body),
             )

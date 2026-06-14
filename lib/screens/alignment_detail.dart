@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
+import '../screens/creative_space.dart';
 import '../services/analysis_service.dart';
 import '../services/gemini_service.dart';
 import '../services/reel_service.dart';
@@ -543,7 +544,7 @@ class _AlignmentDetailScreenState extends State<AlignmentDetailScreen>
                         left: 16,
                         right: 16,
                         bottom: 16,
-                        child: _ChatBar(alignmentId: widget.alignmentId),
+                        child: _CreativeSpaceBar(alignmentId: widget.alignmentId),
                       ),
 // ── Fixed drag handle + gradient blur ────────────────────────
                       Positioned(
@@ -701,65 +702,29 @@ class _FrostedHandleGradient extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topTintAlpha = isDark ? 0.96 : 0.94;
-    final midTintAlpha = isDark ? 0.84 : 0.82;
-    final lowTintAlpha = isDark ? 0.36 : 0.34;
+    final fadeColor = isDark ? Colors.black : Colors.white;
+    final a = isDark ? 0.92 : 0.98;
 
     return SizedBox(
       height: height,
-      child: Stack(
-        children: [
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.black, Colors.black, Colors.transparent],
-              stops: [0.0, 0.58, 0.92],
-            ).createShader(bounds),
-            blendMode: BlendMode.dstIn,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: 36,
-                  sigmaY: 36,
-                  tileMode: TileMode.decal,
-                ),
-                child: const SizedBox.expand(),
-              ),
-            ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              fadeColor.withValues(alpha: a),
+              fadeColor.withValues(alpha: a * 0.85),
+              fadeColor.withValues(alpha: a * 0.65),
+              fadeColor.withValues(alpha: a * 0.42),
+              fadeColor.withValues(alpha: a * 0.22),
+              fadeColor.withValues(alpha: a * 0.08),
+              fadeColor.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.20, 0.40, 0.58, 0.74, 0.88, 1.0],
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  backgroundColor.withValues(alpha: topTintAlpha),
-                  backgroundColor.withValues(alpha: midTintAlpha),
-                  backgroundColor.withValues(alpha: lowTintAlpha),
-                  backgroundColor.withValues(alpha: 0.0),
-                ],
-                stops: const [0.0, 0.34, 0.68, 0.92],
-              ),
-            ),
-            child: const SizedBox.expand(),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: isDark ? 0.07 : 0.24),
-                  Colors.white.withValues(alpha: isDark ? 0.035 : 0.08),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.42, 0.86],
-              ),
-            ),
-            child: const SizedBox.expand(),
-          ),
-        ],
+        ),
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -1092,6 +1057,100 @@ class _SimilarItem extends StatelessWidget {
   }
 }
 
+// ── Creative Space bar ────────────────────────────────────────────────────────
+
+class _CreativeSpaceBar extends StatelessWidget {
+  final String alignmentId;
+  const _CreativeSpaceBar({required this.alignmentId});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    final alignment = alignmentsNotifier.value.firstWhere(
+      (e) => e['id'] == alignmentId,
+      orElse: () => <String, dynamic>{},
+    );
+    final cs = alignment['creative_space'];
+    final hasMessages = cs is Map &&
+        (cs['chat_history'] as List?)?.isNotEmpty == true;
+    final hasChatHistory = !hasMessages &&
+        (alignment['chat_history'] as List?)?.isNotEmpty == true;
+    final hasHistory = hasMessages || hasChatHistory;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Tappable(
+              onTap: () => openCreativeSpace(context, alignmentId),
+              child: ClipSmoothRect(
+                radius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.only(left: 16, right: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withAlpha(22) : Colors.black.withAlpha(12),
+                      borderRadius: SmoothBorderRadius(cornerRadius: 24, cornerSmoothing: 0.6),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withAlpha(45) : Colors.black.withAlpha(30),
+                        width: 0.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(isDark ? 70 : 30),
+                          blurRadius: 24,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.sparkles,
+                          size: 15,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            hasHistory ? 'Continue in Creative Space…' : 'Open Creative Space…',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: scheme.primary,
+                          ),
+                          child: Icon(
+                            CupertinoIcons.arrow_up_right,
+                            size: 13,
+                            color: scheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Chat input bar ────────────────────────────────────────────────────────────
 
 class _ChatBar extends StatefulWidget {
@@ -1122,25 +1181,27 @@ class _ChatBarState extends State<_ChatBar> {
       barrierLabel: '',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 340),
-      pageBuilder: (ctx, _, __) => Material(
-        type: MaterialType.transparency,
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              height: MediaQuery.of(ctx).size.height * 0.75,
-              child: _ChatSheet(
-                alignmentId: widget.alignmentId,
-                alignment: alignment,
-                initialMessage: initialMessage,
+      pageBuilder: (ctx, _, __) {
+        final mq = MediaQuery.of(ctx);
+        final bottomPad = mq.padding.bottom + 8;
+        return Material(
+          type: MaterialType.transparency,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomPad),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                height: mq.size.height * 0.75,
+                child: _ChatSheet(
+                  alignmentId: widget.alignmentId,
+                  alignment: alignment,
+                  initialMessage: initialMessage,
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
       transitionBuilder: (ctx, anim, _, child) {
         final curved = CurvedAnimation(
           parent: anim,
@@ -1496,185 +1557,191 @@ class _ChatSheetState extends State<_ChatSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 26, cornerSmoothing: 0.6);
 
-    return ClipSmoothRect(
-      radius: SmoothBorderRadius.only(
-        topLeft: SmoothRadius(cornerRadius: 20, cornerSmoothing: 0.6),
-        topRight: SmoothRadius(cornerRadius: 20, cornerSmoothing: 0.6),
-      ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-        child: Container(
-          color: isDark
-              ? const Color(0xFF1C1C1E).withAlpha(200)
-              : Colors.white.withAlpha(200),
-          child: Column(
-            children: [
-              // Drag handle
-              Container(
-                margin: const EdgeInsets.only(top: 10),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipSmoothRect(
+        radius: cardRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: ShapeDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.92),
+              shape: SmoothRectangleBorder(
+                borderRadius: cardRadius,
+                side: BorderSide(
                   color: isDark
-                      ? const Color(0xFF3A3A3C)
-                      : const Color(0xFFD1D1D6),
-                  borderRadius: SmoothBorderRadius(
-                    cornerRadius: 2,
-                    cornerSmoothing: 0.6,
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.black.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.20)
+                        : Colors.black.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 16, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Ask about this Alignment',
-                        style: AppTypography.navTitle(
-                          color: scheme.onSurface,
-                        ).copyWith(fontSize: 16),
-                      ),
-                    ),
-                    Tappable(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? const Color(0xFF2C2C2E)
-                              : const Color(0xFFF2F2F7),
-                        ),
-                        child: Icon(
-                          CupertinoIcons.xmark,
-                          size: 13,
-                          color: scheme.onSurfaceVariant,
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Ask about this Alignment',
+                          style: AppTypography.navTitle(
+                            color: scheme.onSurface,
+                          ).copyWith(fontSize: 16),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(
-                height: 0.5,
-                thickness: 0.5,
-                color: scheme.outline.withAlpha(60),
-              ),
-              // Messages
-              Expanded(
-                child: _messages.isEmpty && !_loading
-                    ? _ChatEmptyState(scheme: scheme)
-                    : ListView.builder(
-                        controller: _scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                        itemCount: _messages.length + (_loading ? 1 : 0),
-                        itemBuilder: (_, i) {
-                          if (i == _messages.length) {
-                            return const _TypingIndicator();
-                          }
-                          return _MessageBubble(
-                            message: _messages[i],
-                            isDark: isDark,
-                            scheme: scheme,
-                          );
-                        },
-                      ),
-              ),
-              // Input
-              Divider(
-                height: 0.5,
-                thickness: 0.5,
-                color: scheme.outline.withAlpha(60),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _ctrl,
-                        autofocus: true,
-                        textInputAction: TextInputAction.send,
-                        minLines: 1,
-                        maxLines: 4,
-                        onSubmitted: (t) {
-                          _send(t);
-                          _ctrl.clear();
-                        },
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: scheme.onSurface,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Message…',
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 14,
+                      Tappable(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.xmark,
+                            size: 13,
                             color: scheme.onSurfaceVariant,
                           ),
-                          filled: true,
-                          fillColor: isDark
-                              ? const Color(0xFF2C2C2E)
-                              : const Color(0xFFF2F2F7),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(
-                              cornerRadius: 20,
-                              cornerSmoothing: 0.6,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(
-                              cornerRadius: 20,
-                              cornerSmoothing: 0.6,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: SmoothBorderRadius(
-                              cornerRadius: 20,
-                              cornerSmoothing: 0.6,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Tappable(
-                      onTap: () {
-                        final t = _ctrl.text.trim();
-                        if (t.isNotEmpty) {
-                          _send(t);
-                          _ctrl.clear();
-                        }
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: scheme.primary,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.arrow_up,
-                          size: 16,
-                          color: scheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                // Messages + floating input
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Messages scroll behind the input
+                      _messages.isEmpty && !_loading
+                          ? _ChatEmptyState(scheme: scheme)
+                          : ListView.builder(
+                              controller: _scrollCtrl,
+                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 80),
+                              itemCount: _messages.length + (_loading ? 1 : 0),
+                              itemBuilder: (_, i) {
+                                if (i == _messages.length) {
+                                  return const _TypingIndicator();
+                                }
+                                return _MessageBubble(
+                                  message: _messages[i],
+                                  isDark: isDark,
+                                  scheme: scheme,
+                                );
+                              },
+                            ),
+                      // Floating input row — no background container
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        bottom: 20,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: ClipSmoothRect(
+                                radius: SmoothBorderRadius(
+                                    cornerRadius: 50, cornerSmoothing: 0.6),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                      sigmaX: 24, sigmaY: 24),
+                                  child: Container(
+                                    decoration: ShapeDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.10)
+                                          : Colors.black.withValues(alpha: 0.06),
+                                      shape: SmoothRectangleBorder(
+                                        borderRadius: SmoothBorderRadius(
+                                            cornerRadius: 50,
+                                            cornerSmoothing: 0.6),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.12)
+                                              : Colors.black
+                                                  .withValues(alpha: 0.08),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: _ctrl,
+                                      autofocus: true,
+                                      textInputAction: TextInputAction.send,
+                                      minLines: 1,
+                                      maxLines: 4,
+                                      onSubmitted: (t) {
+                                        _send(t);
+                                        _ctrl.clear();
+                                      },
+                                      style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: scheme.onSurface),
+                                      decoration: InputDecoration(
+                                        hintText: 'Message…',
+                                        hintStyle: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: scheme.onSurfaceVariant),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 18, vertical: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Tappable(
+                              onTap: () {
+                                final t = _ctrl.text.trim();
+                                if (t.isNotEmpty) {
+                                  _send(t);
+                                  _ctrl.clear();
+                                }
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: scheme.primary),
+                                child: Icon(CupertinoIcons.arrow_up,
+                                    size: 18, color: scheme.onPrimary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

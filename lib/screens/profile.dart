@@ -4,6 +4,7 @@ import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -67,7 +68,7 @@ class _ProfileSheet extends StatefulWidget {
 class _ProfileSheetState extends State<_ProfileSheet>
     with SingleTickerProviderStateMixin {
   final _scrollCtrl = ScrollController();
-  String _firstName = '';
+  String? _firstName;
   String _memberSince = '';
   double _dragX = 0;
   late AnimationController _snapBackCtrl;
@@ -145,6 +146,23 @@ class _ProfileSheetState extends State<_ProfileSheet>
     return s;
   }
 
+  void _showIconPicker(BuildContext ctx) {
+    showGeneralDialog<void>(
+      context: ctx,
+      barrierDismissible: true,
+      barrierLabel: 'App Icon',
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 280),
+      transitionBuilder: (_, anim, __, child) => SlideTransition(
+        position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+          CurvedAnimation(parent: anim, curve: Curves.easeOutQuart, reverseCurve: Curves.easeOutCubic),
+        ),
+        child: child,
+      ),
+      pageBuilder: (_, __, ___) => const _IconPickerSheet(),
+    );
+  }
+
   void _onDragUpdate(DragUpdateDetails d) {
     if (_snapBackCtrl.isAnimating) _snapBackCtrl.stop();
     final sw = MediaQuery.of(context).size.width;
@@ -215,13 +233,26 @@ class _ProfileSheetState extends State<_ProfileSheet>
                               padding: EdgeInsets.fromLTRB(20, 88, 20, 40),
                               children: [
                                 const SizedBox(height: 0),
-                                UserCard(
-                                  firstName: _firstName,
-                                  memberSince: _memberSince,
-                                  analysisCount: count,
-                                  streak: streak,
-                                  isDark: isDark,
-                                ),
+                                if (_firstName == null)
+                                  Container(
+                                    height: 180,
+                                    decoration: ShapeDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.04),
+                                      shape: SmoothRectangleBorder(
+                                        borderRadius: SmoothBorderRadius(cornerRadius: 20, cornerSmoothing: 0.6),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  UserCard(
+                                    firstName: _firstName!,
+                                    memberSince: _memberSince,
+                                    analysisCount: count,
+                                    streak: streak,
+                                    isDark: isDark,
+                                  ),
                                 const SizedBox(height: 28),
                                 Container(
                                   decoration: ShapeDecoration(
@@ -235,7 +266,57 @@ class _ProfileSheetState extends State<_ProfileSheet>
                                   padding: const EdgeInsets.symmetric(vertical: 32),
                                   child: Center(child: _PullCordThemeSwitcher(isDark: isDark)),
                                 ),
-                                const SizedBox(height: 32),
+                                const SizedBox(height: 16),
+                                Tappable(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    _showIconPicker(context);
+                                  },
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 52,
+                                    decoration: ShapeDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.04),
+                                      shape: SmoothRectangleBorder(
+                                        borderRadius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: Row(
+                                        children: [
+                                          Icon(CupertinoIcons.app_fill,
+                                              size: 18,
+                                              color: isDark
+                                                  ? Colors.white.withValues(alpha: 0.55)
+                                                  : Colors.black.withValues(alpha: 0.4)),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'App Icon',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                                color: isDark
+                                                    ? Colors.white.withValues(alpha: 0.85)
+                                                    : Colors.black.withValues(alpha: 0.75),
+                                                decoration: TextDecoration.none,
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(CupertinoIcons.chevron_right,
+                                              size: 14,
+                                              color: isDark
+                                                  ? Colors.white.withValues(alpha: 0.25)
+                                                  : Colors.black.withValues(alpha: 0.2)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
                                 Tappable(
                                   onTap: () async => AuthService.signOut(),
                                   child: Container(
@@ -532,4 +613,314 @@ class _CordPainter extends CustomPainter {
       old.ballColor != ballColor ||
       old.glowColor != glowColor ||
       old.glowRadius != glowRadius;
+}
+
+// ── App Icon Picker ───────────────────────────────────────────────────────────
+
+/// Null iconKey means the primary (default) icon.
+const _kAppIcons = [
+  (null,               'dark mode.png',                        'Dark'),
+  ('icon_light_mode',  'light mode.png',                       'Light'),
+  ('icon_cloudy_sky',  'cloudy sky.png',                       'Cloudy Sky'),
+  ('icon_cool_candy',  'cool candy.png',                       'Cool Candy'),
+  ('icon_gradient',    'gradient display.png',                 'Gradient'),
+  ('icon_hard_candy',  'hard candy.png',                       'Hard Candy'),
+  ('icon_mint_dark',   'mint green with dark accents.png',     'Mint Dark'),
+  ('icon_mint_white',  'mint green with white accents.png',    'Mint White'),
+  ('icon_pulse',       'pulse.png',                            'Pulse'),
+  ('icon_sea_green',   'sea green.png',                        'Sea Green'),
+];
+
+class _IconPickerSheet extends StatefulWidget {
+  const _IconPickerSheet();
+
+  @override
+  State<_IconPickerSheet> createState() => _IconPickerSheetState();
+}
+
+class _IconPickerSheetState extends State<_IconPickerSheet>
+    with SingleTickerProviderStateMixin {
+  String? _current; // null = primary/default
+
+  OverlayEntry? _toastEntry;
+  late final AnimationController _toastCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrent();
+  }
+
+  @override
+  void dispose() {
+    _toastCtrl.dispose();
+    _toastEntry?.remove();
+    super.dispose();
+  }
+
+  Future<void> _loadCurrent() async {
+    try {
+      final name = await FlutterDynamicIcon.getAlternateIconName();
+      if (mounted) setState(() => _current = name);
+    } catch (_) {}
+  }
+
+  void _showPillToast() {
+    _toastEntry?.remove();
+    _toastCtrl.value = 0;
+
+    _toastEntry = OverlayEntry(
+      builder: (_) => _IconChangedToast(slideAnim: _toastCtrl),
+    );
+    Overlay.of(context).insert(_toastEntry!);
+    _toastCtrl.forward();
+
+    Future.delayed(const Duration(milliseconds: 1600), () async {
+      if (!mounted) return;
+      await _toastCtrl.reverse();
+      _toastEntry?.remove();
+      _toastEntry = null;
+    });
+  }
+
+  Future<void> _setIcon(String? iconKey) async {
+    if (_current == iconKey) return;
+    try {
+      final supported = await FlutterDynamicIcon.supportsAlternateIcons;
+      if (!supported) return;
+      await FlutterDynamicIcon.setAlternateIconName(iconKey);
+      if (!mounted) return;
+      setState(() => _current = iconKey);
+      HapticFeedback.mediumImpact();
+      _showPillToast();
+    } catch (e) {
+      debugPrint('Icon change failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 26, cornerSmoothing: 0.6);
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+        child: ClipSmoothRect(
+          radius: cardRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Container(
+              decoration: ShapeDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.92),
+                shape: SmoothRectangleBorder(
+                  borderRadius: cardRadius,
+                  side: BorderSide(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 26, 16, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'App Icon',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.4,
+                            color: scheme.onSurface,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                      Tappable(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.xmark,
+                            size: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Choose how Align looks on your home screen',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: scheme.onSurfaceVariant,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Icon grid — fixed 90px cell height to avoid overflow
+                  GridView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.72,
+                    ),
+                    itemCount: _kAppIcons.length,
+                    itemBuilder: (_, i) {
+                      final (key, file, label) = _kAppIcons[i];
+                      final selected = _current == key;
+                      return Tappable(
+                        onTap: () => _setIcon(key),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Expanded(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.all(2.5),
+                                decoration: ShapeDecoration(
+                                  shape: SmoothRectangleBorder(
+                                    borderRadius: SmoothBorderRadius(cornerRadius: 17, cornerSmoothing: 0.6),
+                                    side: BorderSide(
+                                      color: selected ? scheme.primary : Colors.transparent,
+                                      width: 2.5,
+                                    ),
+                                  ),
+                                ),
+                                child: ClipSmoothRect(
+                                  radius: SmoothBorderRadius(cornerRadius: 13, cornerSmoothing: 0.6),
+                                  child: Image.asset(
+                                    'lib/assets/app_icons/$file',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              label,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                                color: selected
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconChangedToast extends StatelessWidget {
+  final Animation<double> slideAnim;
+  const _IconChangedToast({required this.slideAnim});
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    const toastH = 42.0;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: slideAnim,
+          builder: (_, __) {
+            final offsetY = -toastH + (topPad + toastH + 6) * slideAnim.value;
+            return Stack(
+              children: [
+                Positioned(
+                  top: offsetY,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(toastH / 2),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: Container(
+                          height: toastH,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(toastH / 2),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                size: 22,
+                                color: Color(0xFF30D158),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'App icon changed',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

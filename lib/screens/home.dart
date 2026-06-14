@@ -14,10 +14,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_typography.dart';
 import '../providers/theme_notifier.dart';
 import '../screens/alignment_detail.dart';
+import '../screens/creative_space.dart';
 import '../screens/milestone_modal.dart';
 import '../screens/new_alignment.dart';
-import '../screens/paywall_screen.dart';
+
 import '../services/analysis_service.dart';
+import '../services/auth_service.dart';
 import '../services/milestone_service.dart';
 import '../screens/insights.dart';
 import '../screens/profile.dart';
@@ -243,6 +245,31 @@ class _HomeState extends State<Home> {
     }).toList();
   }
 
+  void _showUserModal(BuildContext context) {
+    final alignments = alignmentsNotifier.value;
+    final analysisCount = alignments
+        .where((a) => a['is_analyzing'] != true && a['status'] != 'failed')
+        .length;
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'User',
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 280),
+      transitionBuilder: (_, anim, __, child) => SlideTransition(
+        position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+          CurvedAnimation(parent: anim, curve: Curves.easeOutQuart, reverseCurve: Curves.easeOutCubic),
+        ),
+        child: child,
+      ),
+      pageBuilder: (ctx, _, __) => _UserInfoSheet(
+        user: _user,
+        firstName: _firstName,
+        analysisCount: analysisCount,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -284,7 +311,10 @@ class _HomeState extends State<Home> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Tappable(
-                            onTap: () {},
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              _showUserModal(context);
+                            },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -316,31 +346,6 @@ class _HomeState extends State<Home> {
                     ],
                   ),
                   actions: [
-                    Tappable(
-                      scaleOnPress: true,
-                      onTap: () => Navigator.push(
-                        context,
-                        AppRoute.modal(const PaywallScreen()),
-                      ),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? const Color(0xFF333333)
-                              : const Color(0xFFE5E5EA),
-                        ),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'lib/assets/logo-pro.svg',
-                            // width: 20,
-                            height: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
                     Padding(
                       padding: const EdgeInsets.only(right: 20),
                       child: Tappable(
@@ -469,40 +474,51 @@ class _HomeState extends State<Home> {
                                                       scheme: scheme,
                                                     ),
                                                   ),
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(left: 10),
-                                                    child: AlignmentDeck(
-                                                    alignments: filtered,
-                                                    starred: starred,
-                                                    isDark: isDark,
-                                                    scheme: scheme,
-                                                    confirmDelete: () =>
-                                                        _confirmDelete(context),
-                                                    onOpen: (id) =>
-                                                        Navigator.push(
-                                                          context,
-                                                          AppRoute.transparentModal(AlignmentDetailScreen(
-                                                            alignmentId: id,
-                                                          )),
+                                                  Stack(
+                                                    clipBehavior: Clip.none,
+                                                    children: [
+                                                      // Title first → paints behind deck
+                                                      Padding(
+                                                        padding: const EdgeInsets.only(top: 293, left: 20, right: 20),
+                                                        child: _DeckTitleBox(
+                                                          alignment:
+                                                              _activeDeckAlignment ??
+                                                              (filtered.isNotEmpty
+                                                                  ? filtered.first
+                                                                  : null),
+                                                          scheme: scheme,
                                                         ),
-                                                    onDelete: AnalysisService
-                                                        .deleteAlignment,
-                                                    onActiveChanged: (a) =>
-                                                        setState(
-                                                          () =>
-                                                              _activeDeckAlignment =
-                                                                  a,
+                                                      ),
+                                                      // Deck last → paints on top
+                                                      Padding(
+                                                        padding: const EdgeInsets.only(left: 10),
+                                                        child: AlignmentDeck(
+                                                          alignments: filtered,
+                                                          starred: starred,
+                                                          isDark: isDark,
+                                                          scheme: scheme,
+                                                          confirmDelete: () =>
+                                                              _confirmDelete(context),
+                                                          onOpen: (id) =>
+                                                              Navigator.push(
+                                                                context,
+                                                                AppRoute.transparentModal(AlignmentDetailScreen(
+                                                                  alignmentId: id,
+                                                                )),
+                                                              ),
+                                                          onDelete: AnalysisService
+                                                              .deleteAlignment,
+                                                          onActiveChanged: (a) =>
+                                                              setState(
+                                                                () =>
+                                                                    _activeDeckAlignment =
+                                                                        a,
+                                                              ),
+                                                          onCreativeSpace: (id) =>
+                                                              openCreativeSpace(context, id),
                                                         ),
-                                                  ),
-                                                  ),
-                                                  SizedBox(height: 35),
-                                                  _DeckTitleBox(
-                                                    alignment:
-                                                        _activeDeckAlignment ??
-                                                        (filtered.isNotEmpty
-                                                            ? filtered.first
-                                                            : null),
-                                                    scheme: scheme,
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
@@ -571,6 +587,7 @@ class AlignmentDeck extends StatefulWidget {
   final void Function(String id) onOpen;
   final Future<void> Function(String id) onDelete;
   final ValueChanged<Map<String, dynamic>>? onActiveChanged;
+  final void Function(String id)? onCreativeSpace;
 
   const AlignmentDeck({
     required this.alignments,
@@ -581,6 +598,7 @@ class AlignmentDeck extends StatefulWidget {
     required this.onOpen,
     required this.onDelete,
     this.onActiveChanged,
+    this.onCreativeSpace,
     super.key,
   });
 
@@ -598,7 +616,7 @@ class _AlignmentDeckState extends State<AlignmentDeck> {
   static const _restingDrop = 42.0;
   static const _renderWindowSlots = 6.0;
   static const _snapDelay = Duration(milliseconds: 30);
-  static const _snapDuration = Duration(milliseconds: 190);
+  static const _snapDuration = Duration(milliseconds: 380);
 
   late final ScrollController _scrollController;
   Timer? _snapTimer;
@@ -705,7 +723,7 @@ class _AlignmentDeckState extends State<AlignmentDeck> {
       await _scrollController.animateTo(
         target,
         duration: _snapDuration,
-        curve: Curves.fastOutSlowIn,
+        curve: Curves.easeOutCubic,
       );
     } finally {
       if (mounted) {
@@ -788,9 +806,13 @@ class _AlignmentDeckState extends State<AlignmentDeck> {
               top: 0,
               child: Transform.translate(
                 offset: Offset(0, offsetY),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onLongPress: () => _onCardLongPress(context, id),
+                child: _SwipeUpCard(
+                  key: ValueKey('swipe_$id'),
+                  onOpen: () => widget.onOpen(id),
+                  onActions: () => _onCardLongPress(context, id),
+                  onSwipeDown: widget.onCreativeSpace != null
+                      ? () => widget.onCreativeSpace!(id)
+                      : null,
                   child: _FeaturedCard(
                     alignment: alignment,
                     isStarred: widget.starred.contains(id),
@@ -860,19 +882,22 @@ class _DeckTitleBox extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeIn,
-        switchOutCurve: Curves.easeOut,
-        child: Text(
-          displayTitle,
-          key: ValueKey(displayTitle),
-          style: AppTypography.dataSmall(
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+      child: SizedBox(
+        height: 36,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeIn,
+          switchOutCurve: Curves.easeOut,
+          child: Text(
+            displayTitle,
+            key: ValueKey(displayTitle),
+            style: AppTypography.dataSmall(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+            ),
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 2,
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
@@ -1314,10 +1339,7 @@ class _NavBar extends StatelessWidget {
                 const SizedBox(width: 6),
                 Tappable(
                   scaleOnPress: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    AppRoute.modal(const NewAlignmentScreen()),
-                  ),
+                  onTap: () => showNewAlignmentModal(context),
                   child: Container(
                     width: 45,
                     height: 45,
@@ -1719,6 +1741,80 @@ class _Avatar extends StatelessWidget {
   }
 }
 
+// ── Swipe-completed toast ──────────────────────────────────────────────────────
+
+class _SwipeCompletedToast extends StatelessWidget {
+  final Animation<double> slideAnim;
+  const _SwipeCompletedToast({required this.slideAnim});
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    const toastH = 42.0;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: slideAnim,
+          builder: (_, __) {
+            final offsetY = -toastH + (topPad + toastH + 6) * slideAnim.value;
+            return Stack(
+              children: [
+                Positioned(
+                  top: offsetY,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(toastH / 2),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: Container(
+                          height: toastH,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(toastH / 2),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                size: 22,
+                                color: const Color(0xFF30D158),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Completed',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 // ── Alignment cascade deck ──────────────────────────────────────────────────────
 
 // Fixed 3D slot transforms: [rotateY, translateX, translateY, translateZ, scale, opacity]
@@ -1782,6 +1878,296 @@ class SlantedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
+
+// ── Swipe-up-to-actions card wrapper ─────────────────────────────────────────
+
+class _SwipeUpCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onOpen;
+  final VoidCallback onActions;
+  final VoidCallback? onSwipeDown;
+
+  const _SwipeUpCard({
+    super.key,
+    required this.child,
+    required this.onOpen,
+    required this.onActions,
+    this.onSwipeDown,
+  });
+
+  @override
+  State<_SwipeUpCard> createState() => _SwipeUpCardState();
+}
+
+class _SwipeUpCardState extends State<_SwipeUpCard>
+    with TickerProviderStateMixin {
+  double _dragY = 0;
+  late AnimationController _snapCtrl;
+  late Animation<double> _snapAnim;
+  double _snapFrom = 0;
+  bool _triggered = false;
+  bool _isDragging = false;
+  double _lastHapticY = 0;
+
+  // Up swipe → actions modal
+  static const _downTrigger = 52.0;
+  // Up swipe → progress toast
+  static const _upTrigger = 88.0;
+  static const _hapticInterval = 4.0;
+
+  // Toast overlay state
+  OverlayEntry? _toastEntry;
+  AnimationController? _toastSlideCtrl;
+  final _progressNotifier = ValueNotifier<double>(0.0);
+
+  @override
+  void initState() {
+    super.initState();
+    _snapCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _snapAnim = CurvedAnimation(parent: _snapCtrl, curve: Curves.easeOutCubic);
+    _snapCtrl.addListener(() {
+      setState(() => _dragY = _snapFrom * (1 - _snapAnim.value));
+    });
+  }
+
+  @override
+  void dispose() {
+    _toastEntry?.remove();
+    _toastEntry = null;
+    _toastSlideCtrl?.dispose();
+    _progressNotifier.dispose();
+    _snapCtrl.dispose();
+    super.dispose();
+  }
+
+  void _showToast() {
+    if (_toastEntry != null) return;
+    final slideCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _toastSlideCtrl = slideCtrl;
+    _toastEntry = OverlayEntry(
+      builder: (_) => _SwipeProgressToast(
+        progress: _progressNotifier,
+        slideAnim: CurvedAnimation(parent: slideCtrl, curve: Curves.easeOutCubic),
+      ),
+    );
+    Overlay.of(context).insert(_toastEntry!);
+    slideCtrl.forward();
+  }
+
+  void _hideToast() {
+    final entry = _toastEntry;
+    final ctrl = _toastSlideCtrl;
+    if (entry == null || ctrl == null) return;
+    _toastEntry = null;
+    _toastSlideCtrl = null;
+    ctrl.reverse().then((_) {
+      entry.remove();
+      ctrl.dispose();
+    });
+  }
+
+  void _showCompletedToast() {
+    final slideCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    OverlayEntry? entry;
+    entry = OverlayEntry(
+      builder: (_) => _SwipeCompletedToast(
+        slideAnim: CurvedAnimation(parent: slideCtrl, curve: Curves.easeOutCubic),
+      ),
+    );
+    Overlay.of(context).insert(entry);
+    slideCtrl.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) {
+          entry?.remove();
+          slideCtrl.dispose();
+          return;
+        }
+        slideCtrl.reverse().then((_) {
+          entry?.remove();
+          slideCtrl.dispose();
+        });
+      });
+    });
+  }
+
+  void _onStart(DragStartDetails _) {
+    _isDragging = true;
+    _lastHapticY = _dragY;
+  }
+
+  void _onUpdate(DragUpdateDetails d) {
+    if (_triggered) return;
+    if (_snapCtrl.isAnimating) _snapCtrl.stop();
+
+    final newY = _dragY + d.delta.dy;
+
+    if (newY <= 0) {
+      // ── Up swipe → actions modal ──────────────────────────────────────
+      _hideToast();
+      _progressNotifier.value = 0;
+      setState(() => _dragY = newY.clamp(-_downTrigger * 1.5, 0.0));
+      if (_dragY <= -_downTrigger && !_triggered) {
+        _triggered = true;
+        HapticFeedback.mediumImpact();
+        _snapBack();
+        widget.onActions();
+      }
+    } else {
+      // ── Down swipe → progress toast (damped) ─────────────────────────
+      final damped = (_dragY + d.delta.dy * 0.38).clamp(0.0, _upTrigger * 1.15);
+      setState(() => _dragY = damped);
+      final progress = (_dragY / _upTrigger).clamp(0.0, 1.0);
+      _progressNotifier.value = progress;
+      _showToast();
+
+      if ((_dragY - _lastHapticY).abs() >= _hapticInterval) {
+        HapticFeedback.selectionClick();
+        _lastHapticY = _dragY;
+      }
+      if (_dragY >= _upTrigger && !_triggered) {
+        _triggered = true;
+        _hideToast();
+        _snapBack();
+        if (widget.onSwipeDown != null) {
+          HapticFeedback.mediumImpact();
+          widget.onSwipeDown!();
+        } else {
+          _showCompletedToast();
+        }
+      }
+    }
+  }
+
+  void _onEnd(DragEndDetails _) {
+    _isDragging = false;
+    _triggered = false;
+    _progressNotifier.value = 0;
+    _hideToast();
+    _snapBack();
+  }
+
+  void _snapBack() {
+    _snapFrom = _dragY;
+    _snapCtrl.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragStart: _onStart,
+      onVerticalDragUpdate: _onUpdate,
+      onVerticalDragEnd: _onEnd,
+      onLongPress: _isDragging
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              widget.onActions();
+            },
+      onTap: widget.onOpen,
+      child: Transform.translate(
+        offset: Offset(0, _dragY),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ── Swipe-progress toast ───────────────────────────────────────────────────────
+
+class _SwipeProgressToast extends StatelessWidget {
+  final ValueNotifier<double> progress;
+  final Animation<double> slideAnim;
+
+  const _SwipeProgressToast({
+    required this.progress,
+    required this.slideAnim,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    const toastH = 42.0;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([progress, slideAnim]),
+          builder: (_, __) {
+            // slideAnim 0 → fully above screen, 1 → resting below status bar
+            final offsetY = -toastH + (topPad + toastH + 6) * slideAnim.value;
+            return Stack(
+              children: [
+                Positioned(
+                  top: offsetY,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(toastH / 2),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: Container(
+                          height: toastH,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(toastH / 2),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 26,
+                                height: 26,
+                                child: CircularProgressIndicator(
+                                  value: progress.value,
+                                  strokeWidth: 2.0,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.20),
+                                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              ),
+                              const SizedBox(width: 9),
+                              Text(
+                                'Keep swiping…',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _FeaturedCard extends StatelessWidget {
   final Map<String, dynamic> alignment;
@@ -1933,12 +2319,22 @@ class _FeaturedCard extends StatelessWidget {
                     ],
                   ),
                   const Spacer(),
-                  Text(
-                    displayTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.heading2(color: scheme.onSurface).copyWith(fontSize: 15.5, height: 1.2),
-                  ),
+                  if (isAnalysing && (title == null || title.isEmpty))
+                    SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: scheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                    )
+                  else
+                    Text(
+                      displayTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.heading2(color: scheme.onSurface).copyWith(fontSize: 15.5, height: 1.2),
+                    ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -2040,6 +2436,250 @@ class _TappableCardState extends State<_TappableCard>
           transform: Matrix4.skewY(-0.35),
           child: widget.cardBody(),
         ),
+      ),
+    );
+  }
+}
+
+// ── User info sheet ───────────────────────────────────────────────────────────
+
+class _UserInfoSheet extends StatefulWidget {
+  final dynamic user; // supabase User
+  final String? firstName;
+  final int analysisCount;
+
+  const _UserInfoSheet({
+    required this.user,
+    required this.firstName,
+    required this.analysisCount,
+  });
+
+  @override
+  State<_UserInfoSheet> createState() => _UserInfoSheetState();
+}
+
+class _UserInfoSheetState extends State<_UserInfoSheet> {
+  String? _createdAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCreatedAt();
+  }
+
+  Future<void> _loadCreatedAt() async {
+    final userId = widget.user?.id;
+    if (userId == null) return;
+    final data = await Supabase.instance.client
+        .from('user_profiles')
+        .select('created_at')
+        .eq('id', userId)
+        .maybeSingle();
+    if (mounted && data != null) {
+      setState(() => _createdAt = data['created_at'] as String?);
+    }
+  }
+
+  static String _formatDate(String? iso) {
+    if (iso == null) return '—';
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt == null) return '—';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final cardRadius = SmoothBorderRadius(cornerRadius: 26, cornerSmoothing: 0.6);
+
+    final email = widget.user?.email as String? ?? '—';
+    final displayName = (widget.firstName != null && widget.firstName!.isNotEmpty)
+        ? widget.firstName![0].toUpperCase() + widget.firstName!.substring(1)
+        : '—';
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad + 4),
+        child: ClipSmoothRect(
+          radius: cardRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Container(
+              decoration: ShapeDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.92),
+                shape: SmoothRectangleBorder(
+                  borderRadius: cardRadius,
+                  side: BorderSide(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface,
+                            decoration: TextDecoration.none,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                      ),
+                      Tappable(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.xmark,
+                            size: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: scheme.onSurfaceVariant,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Info rows
+                  _InfoTile(
+                    icon: CupertinoIcons.calendar,
+                    label: 'Member since',
+                    value: _formatDate(_createdAt),
+                    isDark: isDark,
+                    scheme: scheme,
+                  ),
+                  const SizedBox(height: 10),
+                  _InfoTile(
+                    icon: CupertinoIcons.checkmark_shield,
+                    label: 'Analyses',
+                    value: '${widget.analysisCount}',
+                    isDark: isDark,
+                    scheme: scheme,
+                  ),
+                  const SizedBox(height: 24),
+                  // Sign out
+                  Tappable(
+                    onTap: () async {
+                      HapticFeedback.mediumImpact();
+                      Navigator.of(context).pop();
+                      await AuthService.signOut();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 50,
+                      decoration: ShapeDecoration(
+                        color: Colors.red.shade600.withAlpha(20),
+                        shape: SmoothRectangleBorder(
+                          borderRadius: SmoothBorderRadius(cornerRadius: 14, cornerSmoothing: 0.6),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Sign Out',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade500,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: ShapeDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04),
+        shape: SmoothRectangleBorder(
+          borderRadius: SmoothBorderRadius(cornerRadius: 12, cornerSmoothing: 0.6),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: scheme.onSurfaceVariant.withValues(alpha: 0.6)),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: scheme.onSurfaceVariant,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
       ),
     );
   }
