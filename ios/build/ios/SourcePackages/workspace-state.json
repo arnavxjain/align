@@ -182,6 +182,20 @@
       {
         "basedOn" : null,
         "packageRef" : {
+          "identity" : "share_plus-13.1.0",
+          "kind" : "fileSystem",
+          "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/share_plus-13.1.0",
+          "name" : "share_plus"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/share_plus-13.1.0"
+        },
+        "subpath" : "share_plus-13.1.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
           "identity" : "shared_preferences_foundation-2.5.6",
           "kind" : "fileSystem",
           "location" : "/Users/arnav/Developer/align/ios/Flutter/ephemeral/Packages/.packages/shared_preferences_foundation-2.5.6",

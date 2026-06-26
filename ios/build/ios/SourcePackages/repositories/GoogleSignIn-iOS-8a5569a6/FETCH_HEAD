@@ -1,12 +1,13 @@
 e3ff2c111af0a3f1a9d05cac3e39b11def630cac	not-for-merge	branch 'briannamorales/release-9.0.0' of https://github.com/google/GoogleSignIn-iOS
 1f8a6b182f1a61d84921b3d3b848d7e9de797717	not-for-merge	branch 'briannamorales/vwg-flow' of https://github.com/google/GoogleSignIn-iOS
 fa374bf4459516e3f1199966dead28e69fbf0b30	not-for-merge	branch 'dependabot/bundler/bundler-6d4d941ed1' of https://github.com/google/GoogleSignIn-iOS
+1281a2f2b49d9077561082e85b0c4db5316b4eae	not-for-merge	branch 'fix/forpod-claim-swift' of https://github.com/google/GoogleSignIn-iOS
 cd45936f83d6123ea4a369124944a31bb0d55593	not-for-merge	branch 'gandhiakshat/refresh-params-mismatch-from-auth_time' of https://github.com/google/GoogleSignIn-iOS
 1d2ee395a92d5c4f9216ae394f1c895266703527	not-for-merge	branch 'gandhiakshat/sbc-auth_time-claims' of https://github.com/google/GoogleSignIn-iOS
 ec6f69a22d94edbee79ca5a2932677e2fc26e04f	not-for-merge	branch 'gandhiakshat/sbc-sample-app-sign_in-with-token_claims' of https://github.com/google/GoogleSignIn-iOS
 16ed87141e7ca075578af04e4e775b7a9a8ddc5c	not-for-merge	branch 'gandhiakshat/sbc-token_claim-internal-options' of https://github.com/google/GoogleSignIn-iOS
 62f1fc9f2fe67b335a896660c732911aaf0b597c	not-for-merge	branch 'gandhiakshat/sbc-token_claim-update-public-sign_in-api' of https://github.com/google/GoogleSignIn-iOS
-02616ac6b469e8f00212436d2cac16e6efad7954	not-for-merge	branch 'main' of https://github.com/google/GoogleSignIn-iOS
+08d8dcecafb575f98879ffdbb8302c1b9ad65d19	not-for-merge	branch 'main' of https://github.com/google/GoogleSignIn-iOS
 8afc70d407c008ac1743e624e1ac4dcfe11a6e8d	not-for-merge	'refs/pull/1/head' of https://github.com/google/GoogleSignIn-iOS
 e11e8993bf4c02fdf0702c49e9c892b037c37e7e	not-for-merge	'refs/pull/10/head' of https://github.com/google/GoogleSignIn-iOS
 39cfcec40d1fb2d9120a4d2e5bf41ee20e5a5b54	not-for-merge	'refs/pull/102/head' of https://github.com/google/GoogleSignIn-iOS
@@ -346,13 +347,16 @@ d8c69f46734cade3411602a2d53ce0ca3eeb2047	not-for-merge	'refs/pull/587/head' of h
 f30db222519b187634f7c037a65d950b7e6b1459	not-for-merge	'refs/pull/592/head' of https://github.com/google/GoogleSignIn-iOS
 06a419574e1c40aadd457646dd41878f47a5dc4a	not-for-merge	'refs/pull/593/head' of https://github.com/google/GoogleSignIn-iOS
 fa374bf4459516e3f1199966dead28e69fbf0b30	not-for-merge	'refs/pull/594/head' of https://github.com/google/GoogleSignIn-iOS
-a79fc76dbf801d3d6f70c839323eab5becc6e26c	not-for-merge	'refs/pull/594/merge' of https://github.com/google/GoogleSignIn-iOS
+1460144cfc01aecc60dd2dde8b9aff5ade059d6b	not-for-merge	'refs/pull/594/merge' of https://github.com/google/GoogleSignIn-iOS
 7d38d34599dd6dab91dc9e3be72db3032edaa535	not-for-merge	'refs/pull/595/head' of https://github.com/google/GoogleSignIn-iOS
 823d9ed8f17a96ba31ab0cba20fa1b9c88e560d4	not-for-merge	'refs/pull/597/head' of https://github.com/google/GoogleSignIn-iOS
 c3dee1d1dab864fc93ed18fe7452d01d8a062f0a	not-for-merge	'refs/pull/6/head' of https://github.com/google/GoogleSignIn-iOS
 3044684a1a00d54949b4944ab9ce66cdbfb4748d	not-for-merge	'refs/pull/600/head' of https://github.com/google/GoogleSignIn-iOS
-ec73fc576cfdf29bf2153bc5eca9656013e87d3d	not-for-merge	'refs/pull/601/head' of https://github.com/google/GoogleSignIn-iOS
-9393091b725d37e70f102ca734a361eb73179bf4	not-for-merge	'refs/pull/601/merge' of https://github.com/google/GoogleSignIn-iOS
+0b3cba9113d785fe4b18a3ebb8af040f04df077b	not-for-merge	'refs/pull/601/head' of https://github.com/google/GoogleSignIn-iOS
+4f501b6b8bffa226950d1a96d16546e8bbb97c19	not-for-merge	'refs/pull/601/merge' of https://github.com/google/GoogleSignIn-iOS
+5bc36b83a7f3e7caf361b864a41b3085699427f5	not-for-merge	'refs/pull/603/head' of https://github.com/google/GoogleSignIn-iOS
+1281a2f2b49d9077561082e85b0c4db5316b4eae	not-for-merge	'refs/pull/604/head' of https://github.com/google/GoogleSignIn-iOS
+371e38327cae4f249fb71953f1827797a55e5129	not-for-merge	'refs/pull/605/head' of https://github.com/google/GoogleSignIn-iOS
 ea04946ae91b409899a38a757731d10952a7db36	not-for-merge	'refs/pull/63/head' of https://github.com/google/GoogleSignIn-iOS
 a691edbde837359e3acdb3e39d558bd2231a0096	not-for-merge	'refs/pull/64/head' of https://github.com/google/GoogleSignIn-iOS
 0d8c0dac2b6382531bd61b001eb04fa72405d3a4	not-for-merge	'refs/pull/67/head' of https://github.com/google/GoogleSignIn-iOS
@@ -393,3 +397,4 @@ f34e7c67e35dd83759246f1f24d500f66697647b	not-for-merge	tag '7.1.0-fac-eap-1.0.0'
 3859395ef0d8585208df69aaed8f116c693658ef	not-for-merge	tag '8.1.0-vwg-eap-1.1.0' of https://github.com/google/GoogleSignIn-iOS
 3996d908c7b3ce8a87d39c808f9a6b2a08fbe043	not-for-merge	tag '9.0.0' of https://github.com/google/GoogleSignIn-iOS
 913b4005ea26aebe1c97d54e35ad82a515924c71	not-for-merge	tag '9.1.0' of https://github.com/google/GoogleSignIn-iOS
+08d8dcecafb575f98879ffdbb8302c1b9ad65d19	not-for-merge	tag '9.2.0' of https://github.com/google/GoogleSignIn-iOS

@@ -18,7 +18,7 @@ import '../utils/transitions.dart';
 import '../widgets/tappable.dart';
 import '../widgets/toast.dart';
 
-Future<void> showNewAlignmentModal(BuildContext context) {
+Future<void> showNewAlignmentModal(BuildContext context, {String? initialUrl}) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -53,12 +53,13 @@ Future<void> showNewAlignmentModal(BuildContext context) {
         ],
       );
     },
-    pageBuilder: (_, __, ___) => const _NewAlignmentSheet(),
+    pageBuilder: (_, __, ___) => _NewAlignmentSheet(initialUrl: initialUrl),
   );
 }
 
 class _NewAlignmentSheet extends StatefulWidget {
-  const _NewAlignmentSheet({super.key});
+  final String? initialUrl;
+  const _NewAlignmentSheet({super.key, this.initialUrl});
 
   @override
   State<_NewAlignmentSheet> createState() => _NewAlignmentSheetState();
@@ -147,7 +148,10 @@ class _NewAlignmentSheetState extends State<_NewAlignmentSheet>
                     ),
                     child: ClipSmoothRect(
                       radius: cardRadius,
-                      child: NewAlignmentScreen(onStarted: () => Navigator.of(context).pop()),
+                      child: NewAlignmentScreen(
+                        onStarted: () => Navigator.of(context).pop(),
+                        initialUrl: widget.initialUrl,
+                      ),
                     ),
                   ),
                 ),
@@ -162,7 +166,8 @@ class _NewAlignmentSheetState extends State<_NewAlignmentSheet>
 
 class NewAlignmentScreen extends StatefulWidget {
   final VoidCallback? onStarted;
-  const NewAlignmentScreen({super.key, this.onStarted});
+  final String? initialUrl;
+  const NewAlignmentScreen({super.key, this.onStarted, this.initialUrl});
 
   @override
   State<NewAlignmentScreen> createState() => _NewAlignmentScreenState();
@@ -186,6 +191,9 @@ class _NewAlignmentScreenState extends State<NewAlignmentScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialUrl != null) {
+      _url = widget.initialUrl;
+    }
   }
 
   /// Returns true if [url] looks like a valid HTTP/HTTPS URL.

@@ -9,7 +9,6 @@ ea5ad45d356a0219aec6e928952add1686cce974 refs/heads/dev-logout
 c711eae1077a2fae9a2725c66998306f08a92012 refs/heads/mdmathias/no-presenting-controller
 2821262d07018a56c6eb541c009b89a5fe71d440 refs/heads/petea-tests
 975c9d422b5c6e8acd1b0f861d3286206d584035 refs/heads/pre1.0
-b4e20eb0496b82347171b0a36e78f1022d1ec41c refs/heads/release/2.1.0
 ca296a0aaff61241537eea3f2021efff573207ce refs/pull/1/head
 147fdc86c2933dde5f9eda438623dd0206e237d6 refs/pull/100/head
 e30ea9dc01fbfb9dc479b7b766f00e73e2946a0b refs/pull/101/head
@@ -475,7 +474,6 @@ d02a3545aa66c320e8fdcefa5667a3f2b29bea04 refs/pull/949/head
 c13d9ea901ed451b35d9b47f5ffc2eceeb4b1445 refs/pull/954/head
 c27ebb33f967704d327372035aac068815e5c353 refs/pull/955/head
 b4e20eb0496b82347171b0a36e78f1022d1ec41c refs/pull/957/head
-266d16e868feb47744188cf43332af5318fb9b53 refs/pull/957/merge
 19dfa3bdaa86207a4bc7cad591d6258e082c72ea refs/pull/97/head
 270b506491e782dab3358f7c482ec2ad18083df9 refs/pull/99/head
 4df9c7bd417ea182ee0e8e97cd04bbdd8d875ecd refs/reviewable/pr22/r1

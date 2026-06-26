@@ -157,3 +157,68 @@ class CardExpandRoute extends PageRoute<void> {
     );
   }
 }
+
+/// Expands from a small [fromRect] (e.g. a floating pill) to fill the screen.
+/// The clip morphs from [fromRect] to full-screen while the content fades in.
+/// Reverse duration is near-zero because the screen handles its own exit animation.
+class PillExpandRoute extends PageRoute<void> {
+  PillExpandRoute({required this.fromRect, required this.builder});
+
+  final Rect fromRect;
+  final WidgetBuilder builder;
+
+  @override bool get opaque => false;
+  @override Color? get barrierColor => null;
+  @override String? get barrierLabel => null;
+  @override bool get maintainState => true;
+  @override Duration get transitionDuration => const Duration(milliseconds: 500);
+  @override Duration get reverseTransitionDuration => const Duration(milliseconds: 1);
+
+  @override
+  Widget buildPage(context, animation, secondaryAnimation) => builder(context);
+
+  @override
+  Widget buildTransitions(context, animation, secondaryAnimation, child) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    );
+
+    return AnimatedBuilder(
+      animation: curved,
+      child: child,
+      builder: (ctx, child) {
+        final t = curved.value;
+        final size = MediaQuery.of(ctx).size;
+        final full = Rect.fromLTWH(0, 0, size.width, size.height);
+        final rect = Rect.lerp(fromRect, full, t)!;
+        final radius = lerpDouble(20.0, 36.0, t)!;
+
+        // Content fades in once the clip has expanded enough to fill the screen.
+        final contentOpacity = ((t - 0.25) / 0.45).clamp(0.0, 1.0);
+
+        return Stack(
+          children: [
+            Positioned.fromRect(
+              rect: rect,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: size.width,
+                  maxWidth: size.width,
+                  minHeight: size.height,
+                  maxHeight: size.height,
+                  child: Opacity(
+                    opacity: contentOpacity,
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

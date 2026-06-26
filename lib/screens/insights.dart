@@ -16,6 +16,7 @@ import '../widgets/page_header.dart';
 import '../widgets/tappable.dart';
 
 Future<void> showInsightsModal(BuildContext context) {
+  pillShiftedNotifier.value = true;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -51,7 +52,7 @@ Future<void> showInsightsModal(BuildContext context) {
       );
     },
     pageBuilder: (_, __, ___) => const _InsightsSheet(),
-  );
+  ).whenComplete(() => pillShiftedNotifier.value = false);
 }
 
 // Keep the old class name usable as an alias

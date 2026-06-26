@@ -8,6 +8,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   static final _supabase = Supabase.instance.client;
 
+  // Apple only provides the user's name on first sign-in. We stash it here
+  // so OnboardingScreen can pre-fill the name field before saving the profile.
+  static String? pendingAppleName;
+
   static User? get currentUser => _supabase.auth.currentUser;
 
   static Future<void> sendEmailOtp(String email) {
@@ -43,14 +47,32 @@ class AuthService {
       nonce: hashedNonce,
     );
 
+    // Apple provides the name only on the very first sign-in; capture it now.
+    final parts = [credential.givenName, credential.familyName]
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .join(' ')
+        .trim();
+    if (parts.isNotEmpty) pendingAppleName = parts;
+
     final idToken = credential.identityToken;
     if (idToken == null) throw Exception('No ID token returned from Apple');
 
-    return _supabase.auth.signInWithIdToken(
+    final response = await _supabase.auth.signInWithIdToken(
       provider: OAuthProvider.apple,
       idToken: idToken,
       nonce: rawNonce,
     );
+
+    // If a name was provided, also persist it in user_metadata so it survives
+    // if the user clears app data and re-onboards.
+    if (parts.isNotEmpty && response.user != null) {
+      await _supabase.auth.updateUser(
+        UserAttributes(data: {'full_name': parts}),
+      );
+    }
+
+    return response;
   }
 
   static Future<bool> hasProfile(String userId) async {

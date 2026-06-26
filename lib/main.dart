@@ -8,10 +8,15 @@ import 'config/app_config.dart';
 import 'providers/theme_notifier.dart';
 import 'screens/home.dart';
 import 'screens/login.dart';
+import 'screens/new_alignment.dart';
 import 'screens/onboarding.dart';
 import 'screens/splash.dart';
 import 'services/auth_service.dart';
+import 'services/deep_link_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/creative_session_pill.dart';
+
+final appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +60,25 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     themeNotifier.addListener(_onThemeChanged);
+    _initDeepLinks();
+  }
+
+  void _initDeepLinks() {
+    DeepLinkService.init(_handleDeepLink);
+    // Drain any URL the app was cold-started with.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => DeepLinkService.checkInitialLink(),
+    );
+  }
+
+  void _handleDeepLink(String rawUrl) {
+    final url = DeepLinkService.parseNewAlignmentUrl(rawUrl);
+    if (url == null) return;
+    final ctx = appNavigatorKey.currentContext;
+    if (ctx == null) return;
+    // Only open if the user is signed in; otherwise the deep link is silently dropped.
+    if (Supabase.instance.client.auth.currentSession == null) return;
+    showNewAlignmentModal(ctx, initialUrl: url);
   }
 
   @override
@@ -81,10 +105,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
       theme: AppTheme.light(const Color(0xFF007AFF)),
       darkTheme: AppTheme.dark(const Color(0xFF0A84FF)),
       themeMode: themeMode,
       home: const AuthGate(),
+      builder: (context, child) => Stack(
+        fit: StackFit.expand,
+        children: [
+          child!,
+          const CreativeSessionPill(),
+        ],
+      ),
     );
   }
 }

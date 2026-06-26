@@ -36,6 +36,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final appleName = AuthService.pendingAppleName;
+    if (appleName != null) {
+      _nameController.text = appleName;
+      AuthService.pendingAppleName = null;
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _nameController.dispose();

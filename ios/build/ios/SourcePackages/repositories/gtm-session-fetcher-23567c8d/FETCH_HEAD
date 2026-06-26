@@ -1,6 +1,6 @@
 4e9bbf2808b8fee444e84a48f5f3c12641987d3e	not-for-merge	branch '1_7_branch' of https://github.com/google/gtm-session-fetcher
 5ccda3981422a84186387dbb763ba739178b529c	not-for-merge	branch '2_2_branch' of https://github.com/google/gtm-session-fetcher
-2f5d309f4edd148f2cbd37539c4d9dbd50122236	not-for-merge	branch 'main' of https://github.com/google/gtm-session-fetcher
+5073407388161dd36ce4eef5d1713a925e299d4b	not-for-merge	branch 'main' of https://github.com/google/gtm-session-fetcher
 e475427c949a0906be87229f4a380e00944ccd8e	not-for-merge	'refs/import/raw' of https://github.com/google/gtm-session-fetcher
 16ef746b26be25a688816f6b1dbbbe19c369713d	not-for-merge	'refs/pull/1/head' of https://github.com/google/gtm-session-fetcher
 5b8ee758d953c661a1be773b6ab8d557d7220d42	not-for-merge	'refs/pull/10/head' of https://github.com/google/gtm-session-fetcher
@@ -431,6 +431,8 @@ e8f904c4aa5f111ca400c75eeca1f94a24a95461	not-for-merge	'refs/pull/558/head' of h
 c4815f3fbf6389ee24568d0de565d4ae0e037149	not-for-merge	'refs/pull/559/head' of https://github.com/google/gtm-session-fetcher
 d6c00aea7305435afec2ac62f4309d137f1f3b36	not-for-merge	'refs/pull/56/head' of https://github.com/google/gtm-session-fetcher
 14772dea25c698115c310f108ade3865a28c5be5	not-for-merge	'refs/pull/560/head' of https://github.com/google/gtm-session-fetcher
+5a77dea91228d5a1da00f3627dc0d4390d62bfbf	not-for-merge	'refs/pull/561/head' of https://github.com/google/gtm-session-fetcher
+d3823b0d82858b23197225d7a19366a0c034f1bf	not-for-merge	'refs/pull/562/head' of https://github.com/google/gtm-session-fetcher
 00719744bab601bf55a95440f57df95e099abb05	not-for-merge	'refs/pull/57/head' of https://github.com/google/gtm-session-fetcher
 05a9376339a6c7a1d84eb3570eaa80e152ffd230	not-for-merge	'refs/pull/58/head' of https://github.com/google/gtm-session-fetcher
 c2b6affeb35e2e9fb194edea45bd4143cbb9e347	not-for-merge	'refs/pull/59/head' of https://github.com/google/gtm-session-fetcher

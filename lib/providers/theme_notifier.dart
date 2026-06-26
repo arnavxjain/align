@@ -37,3 +37,11 @@ final alignmentsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
 // ── Detail page blur (0.0 = no blur, 1.0 = full blur) ────────────────────────
 // Updated by AlignmentDetailScreen; home page listens and blurs its content.
 final detailBlurNotifier = ValueNotifier<double>(0.0);
+
+// ── Pill vertical shift (true = shift down 100px when insights/profile open) ──
+final pillShiftedNotifier = ValueNotifier<bool>(false);
+
+// ── Active creative session (null = no session in background) ─────────────────
+// Set when the creative space is drag-dismissed; cleared on end or re-open.
+// Keys: alignmentId, title, contentType, elapsedSeconds
+final activeCreativeSessionNotifier = ValueNotifier<Map<String, dynamic>?>(null);

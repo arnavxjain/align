@@ -18,6 +18,7 @@ import '../widgets/user_card.dart';
 
 Future<void> showProfileModal(BuildContext context) {
   HapticFeedback.lightImpact();
+  pillShiftedNotifier.value = true;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -55,7 +56,7 @@ Future<void> showProfileModal(BuildContext context) {
       );
     },
     pageBuilder: (_, __, ___) => const _ProfileSheet(),
-  );
+  ).whenComplete(() => pillShiftedNotifier.value = false);
 }
 
 class _ProfileSheet extends StatefulWidget {
