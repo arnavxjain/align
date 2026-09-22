@@ -1,17 +1,11 @@
-# align
+<h1 align="center">Align</h1>
 
-A new Flutter project.
+<h3 align="center">⚠ Note: This app is still under development ⚠</h3>
+<p align="center">
+  Align is a flutter based application capable of performing various AI related checks such as realism, legitimacy, and contextual signaling. It connects content seamlessly to the app through the ios sharesheet letting people send the content they want analyzed almost instantly. 
+</p>
 
-## Getting Started
+<h4 align="center">Dart — Flutter  |  Python  |  Gemini v4</h4>
 
-This project is a starting point for a Flutter application.
+## Dropping more info soon.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-# align
