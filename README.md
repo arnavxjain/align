@@ -1,4 +1,3 @@
-
 <h1 align="center">Align</h1>
 
 <h3 align="center">⚠ Note: This app is still under development ⚠</h3>
@@ -10,5 +9,10 @@
 
 <h2 align="center">App Preview & Screenshots</h2>
 
+<div align="center">
 
-(https://github.com/user-attachments/assets/228e0b8b-2977-4b61-810c-20146b43f67e)
+<h3>    </h3>
+
+https://github.com/user-attachments/assets/228e0b8b-2977-4b61-810c-20146b43f67e
+
+</div>
